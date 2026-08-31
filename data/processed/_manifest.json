@@ -1,0 +1,8 @@
+{
+  "source": "synthetic-fixture",
+  "generated_at": "2026-08-31T10:53:20+00:00",
+  "dataset": "synthetic GA4-shaped event log (scripts/make_fixture.py)",
+  "window_start": "2020-11-01",
+  "window_end": "2021-01-31",
+  "note": "seed=20201101, n_users=60000. Not GA4 data. Not an analysis."
+}

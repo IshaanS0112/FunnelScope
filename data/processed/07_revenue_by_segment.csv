@@ -1,0 +1,23 @@
+device_category,source_medium,purchases,purchasing_users,revenue_usd
+desktop,(direct) / (none),927,927,58549.93
+desktop,google / organic,854,854,53072.63
+mobile,(direct) / (none),485,485,30780.16
+mobile,google / organic,442,442,28992.71
+desktop,newsletter / email,263,263,16892.46
+desktop,shop.googlemerch / referral,240,240,14999.44
+desktop,google / cpc,207,207,13728.77
+tablet,(direct) / (none),104,104,7072.15
+mobile,newsletter / email,109,109,6870.89
+mobile,shop.googlemerch / referral,118,118,6829.45
+mobile,google / cpc,96,96,6342.67
+tablet,google / organic,67,67,4737.39
+mobile,youtube.com / referral,46,46,2997.74
+desktop,youtube.com / referral,54,54,2897.79
+tablet,google / cpc,27,27,1551.46
+tablet,shop.googlemerch / referral,28,28,1544.73
+tablet,newsletter / email,21,21,1223.39
+mobile,partner-b / referral,8,8,943.87
+desktop,partner-a / referral,11,11,899.53
+desktop,partner-b / referral,13,13,773.07
+tablet,youtube.com / referral,9,9,646.34
+mobile,partner-a / referral,5,5,219.41

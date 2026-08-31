@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Credentials — never commit these
+.env
+*.json.key
+service-account*.json
+application_default_credentials.json
+gcloud/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local scratch
+data/raw/
+*.log
+
+# NOT ignored, deliberately:
+#   data/processed/*.csv      committed so the dashboard runs without GCP
+#   data/processed/*.json     manifest + metrics, read by memo and dashboard
