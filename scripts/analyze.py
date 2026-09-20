@@ -7,10 +7,12 @@ from a funnel that failed validation.
 
     1. monotonicity check on every funnel table
     2. cross-validation of method A against method B
-    3. rates, segment cuts, significance tests
-    4. opportunity sizing + sensitivity sweep
-    5. retention with censoring marked
-    6. RICE ranking, reach measured from the data
+    3. user-scoped vs session-scoped funnel comparison
+    4. rates, segment cuts, significance tests with Holm-Bonferroni correction
+    5. opportunity sizing + sensitivity sweep + bootstrap intervals
+    6. retention with censoring marked
+    7. RICE ranking, reach measured from the data
+    8. diff against the previous export, so a broken re-run is visible immediately
     -> data/processed/metrics.json
 
 Usage:  python scripts/analyze.py
@@ -76,10 +78,60 @@ def _row(df: pd.DataFrame, value: str) -> pd.Series:
     return df[df["segment_value"] == value].iloc[0]
 
 
+def _headline_scalars(m: dict) -> dict:
+    """The handful of numbers whose movement between exports is worth reporting.
+
+    Deliberately small. A diff over every field in metrics.json would be dominated by
+    floating-point noise and by fields that move for uninteresting reasons; the point of
+    the comparison is to catch a query that broke or a window that shifted.
+    """
+    out = {}
+    for s in FUNNEL_STAGES:
+        out[f"funnel.{s}"] = m.get("funnel", {}).get(s)
+    out["funnel.end_to_end_conversion"] = m.get("funnel", {}).get("end_to_end_conversion")
+    out["aov"] = m.get("aov")
+    for o in m.get("opportunities", []):
+        out[f"recoverable.{o['to_stage']}"] = o.get("recoverable_revenue")
+    out["retention.censored_share"] = (
+        m.get("retention", {}).get("censoring", {}).get("share_censored"))
+    for c in m.get("retention", {}).get("curve", []):
+        if c.get("weeks_since_first") in (1, 4):
+            out[f"retention.w{c['weeks_since_first']}"] = c.get("retention_rate")
+    return {k: v for k, v in out.items() if isinstance(v, (int, float))}
+
+
+def reexport_diff(new: dict, previous: dict | None) -> list[dict]:
+    """What moved since the last export, as a list of changed headline scalars.
+
+    A pipeline that silently produces different numbers on a re-run is the failure mode
+    this catches: a query edited by hand, a window quietly widened, a segment that
+    vanished because a source stopped firing. Printing the movement makes a broken
+    re-export obvious at the moment it happens rather than three artifacts later.
+    """
+    if not previous:
+        return []
+    before, after = _headline_scalars(previous), _headline_scalars(new)
+    rows = []
+    for key in sorted(set(before) | set(after)):
+        a, b = before.get(key), after.get(key)
+        if a is None or b is None:
+            rows.append({"metric": key, "previous": a, "current": b,
+                         "change_pct": None, "note": "appeared" if a is None else "disappeared"})
+            continue
+        if a == b:
+            continue
+        rows.append({"metric": key, "previous": a, "current": b,
+                     "change_pct": ((b - a) / a * 100) if a else None, "note": ""})
+    return rows
+
+
 def main() -> int:
     manifest = fio.read_manifest()
     print(manifest.banner())
     print()
+
+    previous_metrics = (json.loads(METRICS_PATH.read_text())
+                        if METRICS_PATH.exists() else None)
 
     overall = fio.load("02_funnel_overall")
     validation = fio.load("02b_funnel_validation")
@@ -88,12 +140,20 @@ def main() -> int:
     by_visitor = fio.load("05_funnel_by_visitor_type")
     cohorts = fio.load("06_cohort_retention")
     revenue = fio.load("07_revenue_by_segment")
+    # Optional: only present once sql/09 has been exported.
+    try:
+        sessions = fio.load("09_funnel_session_scoped")
+    except FileNotFoundError:
+        sessions = None
 
     # ---- 1. gates ---------------------------------------------------------------
-    for name, df in (("overall", overall), ("device", by_device),
-                     ("source", by_source), ("visitor", by_visitor)):
+    tables = [("overall", overall), ("device", by_device),
+              ("source", by_source), ("visitor", by_visitor)]
+    if sessions is not None:
+        tables.append(("session-scoped", sessions))
+    for name, df in tables:
         funnel.check_monotonic(df)
-    print("PASS  funnel monotonicity, all segment tables")
+    print(f"PASS  funnel monotonicity, {len(tables)} segment tables")
 
     xval = funnel.cross_validate(overall, validation)
     print("PASS  cross-validation, timestamp method vs sequence method")
@@ -113,9 +173,20 @@ def main() -> int:
           f"{STAGE_LABELS[worst.to_stage]} ({worst.drop_off * 100:.1f}% lost)")
     print(f"AOV (transaction-weighted): ${aov:,.2f}\n")
 
+    # ---- 2b. user-scoped vs session-scoped ---------------------------------------
+    scope_gap = None
+    if sessions is not None:
+        scope_gap = funnel.session_gap(row, sessions.iloc[0])
+        print(f"Scope comparison: {scope_gap['user_conversion'] * 100:.2f}% of viewing "
+              f"USERS convert, {scope_gap['session_conversion'] * 100:.2f}% of viewing "
+              f"SESSIONS do ({scope_gap['gap_pp']:.2f}pp apart). "
+              f"{scope_gap['return_visit_dependence'] * 100:.0f}% of user-level "
+              f"conversion depends on a return visit.\n")
+
     # ---- 3. opportunity sizing ---------------------------------------------------
     opportunities = sizing.size_all_stages(row, aov, improvement_pp=0.05)
     sensitivity = sizing.sensitivity_table(row, aov)
+    intervals = sizing.bootstrap_recoverable(row, aov, improvement_pp=0.05)
     biggest = opportunities.iloc[0]
     equivalent = sizing.ranking_matches_step_conversion(row)
     print("Recoverable revenue at a 5pp lift on each step's conversion rate:")
@@ -123,13 +194,20 @@ def main() -> int:
         print(f"  {STAGE_LABELS[o['to_stage']]:<18} lost {int(o['users_lost']):>7,} "
               f"users, recovers {o['users_recovered']:>8,.0f}  ->  "
               f"${o['recoverable_revenue']:>12,.0f}")
+    for _, iv in intervals.iterrows():
+        print(f"  {STAGE_LABELS[iv['to_stage']]:<18} 95% CI "
+              f"[${iv['ci_low']:,.0f}, ${iv['ci_high']:,.0f}]  "
+              f"(counts only — the model's assumptions are not in this interval)")
     print(f"  [ranking identical to worst-step-conversion ordering: {equivalent}] "
           f"-- expected, and proved in funnelscope/sizing.py. Sizing prices the stages; "
           f"it does not re-rank them. Effort does, in the RICE table below.")
     print()
 
     # ---- 4. significance ---------------------------------------------------------
-    from funnelscope.stats import ProportionTest
+    # Every comparison below belongs to ONE family, so the family-wise error rate is
+    # what matters, not the per-test alpha. Holm-Bonferroni is applied across all of
+    # them and the corrected verdict is the one that gets quoted anywhere.
+    from funnelscope.stats import ProportionTest, correct_family
     tests = []
 
     dev = by_device.sort_values("viewed", ascending=False)
@@ -155,8 +233,13 @@ def main() -> int:
                                     int(best["purchased"]), int(best["viewed"]),
                                     int(worst_ch["purchased"]), int(worst_ch["viewed"])))
 
-    for t in tests:
-        print(" ", t.verdict())
+    corrected = correct_family(tests, alpha=0.05)
+    for c in corrected:
+        print(" ", c["verdict"])
+    flipped = [c for c in corrected if c["significant_raw"] and not c["significant_holm"]]
+    print(f"  [Holm-Bonferroni across {len(corrected)} comparisons: "
+          f"{sum(c['significant_holm'] for c in corrected)} survive, "
+          f"{len(flipped)} lost significance to the correction]")
     print()
 
     # ---- 5. segment gap value ----------------------------------------------------
@@ -172,7 +255,9 @@ def main() -> int:
 
     # ---- 6. retention ------------------------------------------------------------
     last_date = pd.to_datetime(fio.load("01_event_overview")["last_date"]).max()
-    coh = retention.mark_censored(cohorts, last_date)
+    # Densify BEFORE censoring: the query emits no row for a week with no returners,
+    # so without this a zero cell and an unobservable cell look identical.
+    coh = retention.mark_censored(retention.densify(cohorts, last_date), last_date)
     curve = retention.average_curve(coh)
     censoring = retention.censoring_summary(coh)
     w1 = curve[curve.weeks_since_first == 1]
@@ -244,8 +329,18 @@ def main() -> int:
         "opportunities": opportunities.to_dict("records"),
         "sizing_ranking_equals_step_conversion": bool(equivalent),
         "sensitivity": sensitivity.to_dict("records"),
+        "sizing_intervals": intervals.to_dict("records"),
         "biggest_opportunity": biggest.to_dict(),
-        "significance_tests": [t.to_dict() for t in tests],
+        "significance_tests": corrected,
+        "multiple_comparisons": {
+            "method": "Holm-Bonferroni",
+            "alpha": 0.05,
+            "family_size": len(corrected),
+            "n_significant_raw": sum(c["significant_raw"] for c in corrected),
+            "n_significant_after_correction": sum(c["significant_holm"] for c in corrected),
+            "changed_by_correction": [c["comparison"] for c in flipped],
+        },
+        "scope_comparison": scope_gap,
         "segment_gap": gap,
         "segments": {
             "device": by_device.to_dict("records"),
@@ -258,6 +353,25 @@ def main() -> int:
         },
         "rice": ranked.to_dict("records"),
     }
+
+    # ---- 9. what moved since the last export -------------------------------------
+    moved = reexport_diff(metrics, previous_metrics)
+    metrics["reexport_diff"] = moved
+    if previous_metrics is None:
+        print("\nNo previous metrics.json to compare against — this is a first export.")
+    elif not moved:
+        print("\nRe-export diff: no headline metric changed.")
+    else:
+        print(f"\nRe-export diff — {len(moved)} headline metric(s) moved:")
+        for d in moved:
+            if d["change_pct"] is None:
+                print(f"  {d['metric']:<38} {d['note']}  ({d['previous']} -> {d['current']})")
+            else:
+                print(f"  {d['metric']:<38} {d['previous']:>14,.4f} -> "
+                      f"{d['current']:>14,.4f}  ({d['change_pct']:+.2f}%)")
+        print("  A re-export that moves a number you did not expect to move is a broken "
+              "query until proven otherwise.")
+
     METRICS_PATH.write_text(json.dumps(metrics, indent=2, default=str) + "\n")
     print(f"\nWrote {METRICS_PATH.relative_to(REPO_ROOT)}")
     print("Next: python scripts/render_memo.py")

@@ -17,85 +17,88 @@
 
 ## TL;DR
 
-- **44,202 of the 60,000 users who viewed a product never added one to the cart** — a 73.7% drop at the single widest point in the funnel. End-to-end, 6.89% of viewers buy.
-- **mobile converts 6.31pp lower than desktop** (4.17% vs 10.48%). The difference is statistically real, not sampling noise (p = 1e-186). Closing it would have been worth **$125,842** in this window.
-- **Fix the mobile product page first.** It ranks first on RICE by an order of magnitude, and its reach term is measured rather than assumed.
+- **43,868 of 59,290 product viewers never added one to the cart** — a 74.0% drop at the funnel's widest point. End-to-end, 6.68% of viewers buy.
+- **mobile converts 6.15pp below desktop** (4.02% vs 10.17%), statistically real (p = 2.6e-180). Closing it was worth **$121,802** in this window.
+- **Fix the mobile product page first.** It leads RICE by an order of magnitude and its reach term is measured, not assumed.
 
 ## Where users drop off
 
 | Stage | Users | % of viewers | Step conversion |
 |---|---:|---:|---:|
-| Viewed an item | 60,000 | 100.0% | — |
-| Added to cart | 15,798 | 26.3% | 26.3% |
-| Began checkout | 6,997 | 11.7% | 44.3% |
-| Purchased | 4,134 | 6.9% | 59.1% |
+| Viewed an item | 59,290 | 100.0% | — |
+| Added to cart | 15,422 | 26.0% | 26.0% |
+| Began checkout | 6,774 | 11.4% | 43.9% |
+| Purchased | 3,960 | 6.7% | 58.5% |
 
-The steepest step is **Viewed an item → Added to cart** at 73.7% lost — and it is also where the most users are, which is why it dominates everything below.
+The steepest step is **Viewed an item → Added to cart** at 74.0% lost, and it is where the most users are — which is why it dominates everything below.
+
+**42% of conversions need a return visit.** The same funnel scoped to the session converts at 3.84% against 6.68% user-level, so a single-session optimisation would attack the wrong surface for that share of it.
 
 ## Who drops off
 
 | Segment | Viewed | Purchased | Conversion |
 |---|---:|---:|---:|
-| mobile | 31,383 | 1,309 | 4.17% |
-| desktop | 24,503 | 2,569 | 10.48% |
-| tablet | 4,114 | 256 | 6.22% |
-| new | 42,536 | 1,830 | 4.30% |
-| returning | 17,464 | 2,304 | 13.19% |
+| mobile | 31,013 | 1,248 | 4.02% |
+| desktop | 24,226 | 2,464 | 10.17% |
+| tablet | 4,051 | 248 | 6.12% |
+| new | 42,022 | 1,762 | 4.19% |
+| returning | 17,268 | 2,198 | 12.73% |
 
-mobile converts 6.31pp lower than desktop (4.17% vs 10.48%). z = -29.14, p = 1.03e-186, 95% CI [-6.76, -5.87]pp. Real, not sampling noise. new converts 8.89pp lower than returning (4.30% vs 13.19%). z = -39.06, p = 0.00e+00, 95% CI [-9.43, -8.35]pp. Real, not sampling noise. (1 further segment comparisons were tested; see the Opportunity page of the dashboard.)
+**mobile** converts 6.15pp lower than **desktop** (4.02% vs 10.17%, 95% CI [-6.59, -5.71]pp). **new** converts 8.54pp lower than **returning** (4.19% vs 12.73%, 95% CI [-9.07, -8.00]pp). (1 further comparison is in the dashboard.)
 
-The channel picture separates two problems that look alike in a summary table. **youtube.com / referral** sends 5,330 users converting at 2.05% — high volume, low conversion, an expectation-mismatch or targeting problem, not a checkout problem. **newsletter / email** converts at 13.12% on 2,995 users — an acquisition-scale opportunity. Opposite responses: spend less on the first, more on the second.
+All 3 comparisons were Holm-Bonferroni-corrected for multiple testing and the p-values are small enough that it changes none of the conclusions — worth stating rather than using as a reason to skip the correction, because a borderline result here should not be trusted without it.
+
+The channel picture separates two problems a ranked table blurs. **youtube.com / referral** sends 5,273 users at 2.01% — high volume, low conversion, an expectation-mismatch problem, not a checkout one. **newsletter / email** converts at 12.86% on 2,956 — a scale opportunity. Opposite responses: spend less on the first, more on the second.
 
 ## What it's worth
 
-Sizing model: `users entering × improvement_pp × P(purchase | reached the next stage) × AOV`, with AOV of **$63.51**. A percentage-point lift applies to the stage's conversion rate, whose denominator is users *entering* — the common `users lost × pp` form understates the same lift by a factor of `1/(1−rate)`.
+Sizing model: `users entering × improvement_pp × P(purchase | reached the next stage) × AOV`, AOV **$63.89**. The lift applies to users *entering* — the denominator of the rate it changes. The common `users lost × pp` form is only `(1 − rate)` of this.
 
-| Step | Users lost | Recovered at +5pp | P(purchase \| next stage) | Recoverable |
-|---|---:|---:|---:|---:|
-| Viewed an item → Added to cart | 44,202 | 3,000 | 26.2% | $49,861 |
-| Added to cart → Began checkout | 8,801 | 790 | 59.1% | $29,641 |
-| Began checkout → Purchased | 2,863 | 350 | 100.0% | $22,220 |
+| Step | Users lost | Recovered at +5pp | P(purchase \| next stage) | Recoverable | 95% CI |
+|---|---:|---:|---:|---:|---:|
+| Viewed an item → Added to cart | 43,868 | 2,964 | 25.7% | $48,637 | $47,320 – $49,978 |
+| Added to cart → Began checkout | 8,648 | 771 | 58.5% | $28,802 | $28,058 – $29,522 |
+| Began checkout → Purchased | 2,814 | 339 | 100.0% | $21,641 | $21,155 – $22,143 |
 
-**Upper bounds, not forecasts.** The model applies the purchase rate of users who **did** complete a stage to users who did not; recovered users almost certainly convert worse.
+**Upper bounds, not forecasts.** The model applies the purchase rate of users who **did** complete a stage to users who did not; recovered users almost certainly convert worse. The intervals price sampling variation only — not that assumption, which dominates the error.
 
-**Sizing prices the stages, it does not re-rank them.** Every purchaser passed every stage, so `P(purchase | stage j) = purchases ÷ users at stage j`, and recoverable revenue collapses to a monotone function of step conversion. Ranking by dollars and by worst drop-off are the same ordering, necessarily (verified: `True`). Treating them as two pieces of evidence double-counts one fact. Effort is what re-ranks the work, which is the RICE table's job.
-
-Ranking is stable across the improvement assumption; only the absolute figures move:
+**Sizing prices the stages, it does not re-rank them.** Every purchaser passed every stage, so `P(purchase | stage j) = purchases ÷ users at stage j` and recoverable revenue is a monotone function of step conversion. Ranking by dollars and by worst drop-off are the same ordering, necessarily (verified: `True`), so treating them as two findings double-counts one fact. Effort re-ranks the work — the RICE table's job. The ranking also holds across the improvement assumption; only the absolute figures move:
 
 | Stage | +1pp | +2pp | +5pp | +10pp |
-|---|---|---|---|---|
-| Added to cart | $9,972 | $19,944 | $49,861 | $99,721 |
-| Began checkout | $5,928 | $11,857 | $29,641 | $59,283 |
-| Purchased | $4,444 | $8,888 | $22,220 | $44,441 |
+|---|---:|---:|---:|---:|
+| Added to cart | $9,727 | $19,455 | $48,637 | $97,274 |
+| Began checkout | $5,760 | $11,521 | $28,802 | $57,604 |
+| Purchased | $4,328 | $8,656 | $21,641 | $43,282 |
 
 ## What I'd do first
 
 | # | Recommendation | Reach | Impact | Conf. | Effort (wk) | RICE |
 |---|---|---:|---:|---:|---:|---:|
-| 1 | Rework the product page add-to-cart path on the weakest device | 44,202 | 2.0 | 0.7 | 3.0 | 20,628 |
-| 2 | Reduce cart-to-checkout friction (persistent cart, single-tap checkout entry) | 8,801 | 2.0 | 0.6 | 4.0 | 2,640 |
-| 3 | Rebalance paid spend away from the worst-converting channel: partner-a / referral | 1,160 | 1.0 | 0.75 | 1.5 | 580 |
-| 4 | Shorten the checkout form and surface total cost earlier | 2,863 | 1.0 | 0.55 | 5.0 | 315 |
+| 1 | Rework the product page add-to-cart path on the weakest device | 43,868 | 2.0 | 0.7 | 3.0 | 20,472 |
+| 2 | Reduce cart-to-checkout friction (persistent cart, single-tap checkout entry) | 8,648 | 2.0 | 0.6 | 4.0 | 2,594 |
+| 3 | Rebalance paid spend away from the worst-converting channel: partner-a / referral | 1,143 | 1.0 | 0.75 | 1.5 | 572 |
+| 4 | Shorten the checkout form and surface total cost earlier | 2,814 | 1.0 | 0.55 | 5.0 | 310 |
 
-**Why #1 ranks first:** Largest absolute loss sits between viewing an item and adding one. The device split says this is a layout and interaction problem, not an intent problem. 44,202 users lost at this step; $49,861 recoverable at +5pp (upper bound). *Assumption to challenge:* Assumes the gap is friction rather than a difference in visit intent by device. Untested — an A/B test on the mobile PDP settles it.
+**Why #1 ranks first:** Largest absolute loss sits between viewing an item and adding one. The device split says this is a layout and interaction problem, not an intent problem. *Assumption to challenge:* Assumes the gap is friction rather than a difference in visit intent by device. Untested — an A/B test on the mobile PDP settles it.
 
-Reach is measured from the funnel. Impact, effort and confidence are judgement — there are no engineering estimates behind them. They are stated so you can change one and watch the ranking move, rather than argue with a conclusion.
+Reach is measured from the funnel. Impact, effort and confidence are judgement — no engineering estimates exist behind them. They are stated so you can change one and watch the ranking move.
 
 ## What I'd need to know next
 
 This data records **what** users did and is silent on **why**.
 
 1. **Session recordings for the mobile product page.** The gap is real; whether it is layout friction or different visit intent is not answerable from event counts.
-2. **A cart-abandonment exit survey.** Cart loss looks like friction, but price shock produces an identical signature and needs a different fix.
-3. **An A/B test on the top recommendation.** Everything above is a hypothesis with a size attached, not a result.
+2. **A cart-abandonment exit survey.** Cart loss looks like friction, but price shock has an identical signature and a different fix.
+3. **An A/B test on the top recommendation.** Everything above is a hypothesis with a size attached.
 
 ## Limitations
 
-- **Public demo data.** Google's obfuscated GA4 sample export, not a business problem I uncovered. The analysis is real; the business is not mine.
-- **3% of the retention grid is right-censored** and excluded rather than plotted as zeros. Late cohorts are truncated, not worse.
-- **No cross-device identity.** `user_pseudo_id` is per browser, so someone who browses on a phone and buys on a laptop appears as two users, one of whom never converts. This inflates the measured device gap by an unknown amount — the largest single threat to the headline finding.
-- **Obfuscated items,** so nothing merchandising-level can be said. Funnel and retention mechanics are unaffected.
-- **91 days.** Long enough for funnel work, short for retention.
+Ranked by threat to the conclusions, not by how easy each is to admit.
+
+1. **No cross-device identity.** `user_pseudo_id` is per browser, so a phone-browse / laptop-buy user is two users, one of whom never converts. That inflates the device gap by an unknown amount — and the device gap is the headline finding. The one limitation that could change what I do first.
+2. **Recommendations are hypotheses.** Sizing figures are upper bounds and no A/B test has been run. The ranking is reproducible from stated inputs, not a result.
+3. **91 days, 46% of the retention grid right-censored** and excluded rather than zeroed. Late cohorts are truncated, not worse.
+4. **Public demo data,** with obfuscated items — Google's GA4 sample export, not a problem I uncovered. No merchandising-level insight; funnel and retention mechanics are unaffected.
 
 ---
 

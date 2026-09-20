@@ -105,3 +105,49 @@ def test_rice_ranks_by_score_and_effort_matters():
 def test_rice_handles_zero_effort_without_dividing_by_zero():
     r = rice.Recommendation("x", "", reach=10, impact=1, confidence=1, effort=0)
     assert r.score == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Bootstrap intervals
+# ---------------------------------------------------------------------------
+
+def test_bootstrap_interval_brackets_the_point_estimate():
+    out = sizing.bootstrap_recoverable(ROW, aov=50.0, n_resamples=400)
+    for _, r in out.iterrows():
+        assert r["ci_low"] <= r["recoverable_revenue"] <= r["ci_high"]
+
+
+def test_bootstrap_point_estimates_match_the_deterministic_model():
+    """The interval is uncertainty around the sizing model, not a different model."""
+    point = sizing.size_all_stages(ROW, aov=50.0).set_index("to_stage")
+    out = sizing.bootstrap_recoverable(ROW, aov=50.0, n_resamples=200).set_index("to_stage")
+    for stage in point.index:
+        assert out.loc[stage, "recoverable_revenue"] == pytest.approx(
+            point.loc[stage, "recoverable_revenue"])
+
+
+def test_bootstrap_is_reproducible_from_the_seed():
+    a = sizing.bootstrap_recoverable(ROW, aov=50.0, n_resamples=200, seed=7)
+    b = sizing.bootstrap_recoverable(ROW, aov=50.0, n_resamples=200, seed=7)
+    pd.testing.assert_frame_equal(a, b)
+
+
+def test_bootstrap_interval_narrows_as_the_funnel_gets_bigger():
+    """Sampling variation is what this interval prices, so a 100x larger funnel with the
+    same rates must produce a proportionally tighter relative interval."""
+    def rel_width(row, aov):
+        out = sizing.bootstrap_recoverable(row, aov=aov, n_resamples=600, seed=3)
+        top = out.iloc[0]
+        return (top["ci_high"] - top["ci_low"]) / top["recoverable_revenue"]
+
+    small = pd.DataFrame([{"viewed": 1_000, "added_to_cart": 300,
+                           "began_checkout": 150, "purchased": 90}]).iloc[0]
+    assert rel_width(ROW, 50.0) < rel_width(small, 50.0)
+
+
+def test_bootstrap_ranking_matches_the_point_estimate_ranking():
+    """The no-re-ranking result is a property of the model, so resampling must not
+    disturb it."""
+    out = sizing.bootstrap_recoverable(ROW, aov=50.0, n_resamples=200)
+    point = sizing.size_all_stages(ROW, aov=50.0)
+    assert list(out["to_stage"]) == list(point["to_stage"])

@@ -58,6 +58,13 @@ NEW_MULT = {"new": 0.82, "returning": 1.35}
 
 STAGE_CODE = {"view_item": "V", "add_to_cart": "C", "begin_checkout": "K", "purchase": "P"}
 
+# Probability that a funnel step happens in a LATER session rather than the current one.
+# Without this the session-scoped funnel (09) would be identical to the user-scoped one
+# (02) and the comparison between them would measure nothing.
+P_RETURN_BEFORE = {"add_to_cart": 0.22, "begin_checkout": 0.14, "purchase": 0.18}
+
+MIN_USERS_PER_CHANNEL = 500   # mirrors @min_users in sql/04_funnel_by_source.sql
+
 
 def simulate(rng: np.random.Generator) -> pd.DataFrame:
     """Return a long event log: one row per (user, event)."""
@@ -87,42 +94,57 @@ def simulate(rng: np.random.Generator) -> pd.DataFrame:
     rows = []
     base_ts = WINDOW_START.value // 1000  # microseconds
     day_us = 86_400_000_000
+    window_end_us = WINDOW_END.value // 1000
     for i in range(n):
         t0 = base_ts + int(first_day[i]) * day_us + int(rng.integers(0, day_us))
         common = dict(user_pseudo_id=f"u{i:07d}", device_category=device[i],
                       source_medium=source[i], visitor_type=visitor[i])
+        session = 1
+
+        def emit(event_name, ts, revenue=0.0):
+            rows.append({**common, "event_name": event_name, "event_timestamp": ts,
+                         "ga_session_id": session, "revenue_usd": revenue})
+
         if visitor[i] == "new":
-            rows.append({**common, "event_name": "first_visit",
-                         "event_timestamp": t0 - 1, "revenue_usd": 0.0})
-        rows.append({**common, "event_name": "view_item",
-                     "event_timestamp": t0, "revenue_usd": 0.0})
+            emit("first_visit", t0 - 1)
+        emit("view_item", t0)
         t = t0
+
+        def advance(step, t):
+            """Move time forward, and sometimes start a new session while doing it."""
+            nonlocal session
+            if rng.random() < P_RETURN_BEFORE[step]:
+                session += 1
+                return t + int(rng.integers(1, 14)) * day_us + int(rng.integers(0, day_us))
+            return t + int(rng.integers(30_000_000, 3_600_000_000))
+
         if did_cart[i]:
-            t += int(rng.integers(30_000_000, 3_600_000_000))
-            rows.append({**common, "event_name": "add_to_cart",
-                         "event_timestamp": t, "revenue_usd": 0.0})
+            t = advance("add_to_cart", t)
+            emit("add_to_cart", t)
         if did_checkout[i]:
-            t += int(rng.integers(30_000_000, 1_800_000_000))
-            rows.append({**common, "event_name": "begin_checkout",
-                         "event_timestamp": t, "revenue_usd": 0.0})
+            t = advance("begin_checkout", t)
+            emit("begin_checkout", t)
         if did_purchase[i]:
-            t += int(rng.integers(20_000_000, 900_000_000))
-            aov = float(np.round(rng.lognormal(mean=4.0, sigma=0.55), 2))
-            rows.append({**common, "event_name": "purchase",
-                         "event_timestamp": t, "revenue_usd": aov})
+            t = advance("purchase", t)
+            emit("purchase", t, float(np.round(rng.lognormal(mean=4.0, sigma=0.55), 2)))
         # Return visits, so retention is not degenerate.
-        for _ in range(int(rng.poisson(1.1 if did_purchase[i] else 0.5))):
+        for k in range(int(rng.poisson(1.1 if did_purchase[i] else 0.5))):
             back = t0 + int(rng.integers(1, 45)) * day_us
-            if back <= WINDOW_END.value // 1000:
-                rows.append({**common, "event_name": "session_start",
-                             "event_timestamp": back, "revenue_usd": 0.0})
-    return pd.DataFrame(rows)
+            if back <= window_end_us:
+                session += 1
+                emit("session_start", back)
+    out = pd.DataFrame(rows)
+    # Funnel events that ran past the window end would not appear in a real export
+    # restricted by _TABLE_SUFFIX. Drop them here for the same reason.
+    return out[out["event_timestamp"] <= window_end_us].reset_index(drop=True)
 
 
-def funnel_by_timestamps(log: pd.DataFrame, by: str | None) -> pd.DataFrame:
-    """Method A -- per-user first-occurrence timestamps with cumulative predicates.
-    Mirrors 02_funnel_ordered.sql."""
-    keys = ["user_pseudo_id"] + ([by] if by else [])
+def funnel_by_timestamps(log: pd.DataFrame, by: str | None,
+                         unit: tuple[str, ...] = ("user_pseudo_id",)) -> pd.DataFrame:
+    """Method A -- first-occurrence timestamps per `unit`, with cumulative predicates.
+    Mirrors 02_funnel_ordered.sql (unit = the user) and 09_funnel_session_scoped.sql
+    (unit = the user's session)."""
+    keys = list(unit) + ([by] if by else [])
     piv = (log[log.event_name.isin(STAGE_CODE)]
            .pivot_table(index=keys, columns="event_name",
                         values="event_timestamp", aggfunc="min"))
@@ -168,6 +190,35 @@ def funnel_by_sequence(log: pd.DataFrame) -> pd.DataFrame:
     }])
 
 
+def funnel_by_sessions(log: pd.DataFrame) -> pd.DataFrame:
+    """The same funnel scoped to the session rather than the user.
+    Mirrors 09_funnel_session_scoped.sql. Its conversion is necessarily <= the
+    user-scoped figure, and the gap measures dependence on return visits."""
+    out = funnel_by_timestamps(log, None, unit=("user_pseudo_id", "ga_session_id"))
+    out["segment_type"] = "scope"
+    out["segment_value"] = "session"
+    return out
+
+
+def fold_long_tail(df: pd.DataFrame, min_users: int = MIN_USERS_PER_CHANNEL) -> pd.DataFrame:
+    """Collapse channels below `min_users` into '(long tail)'.
+
+    Mirrors the @min_users branch in sql/04_funnel_by_source.sql. A channel with 40
+    users and one purchase has a confidence interval wide enough to contain almost
+    anything; reporting it as a finding would be noise dressed as signal. Applied here
+    too so the fixture and the BigQuery export have the same shape -- a fixture that
+    skips this would not exercise the '(long tail)' handling downstream.
+    """
+    small = df["viewed"] < min_users
+    if not small.any():
+        return df
+    d = df.copy()
+    d.loc[small, "segment_value"] = "(long tail)"
+    agg = (d.groupby(["segment_type", "segment_value"], as_index=False)
+             [["viewed", "added_to_cart", "began_checkout", "purchased"]].sum())
+    return agg.sort_values("viewed", ascending=False).reset_index(drop=True)
+
+
 def cohort_retention(log: pd.DataFrame) -> pd.DataFrame:
     d = log.assign(date=pd.to_datetime(log.event_timestamp, unit="us").dt.floor("D"))
     d["week"] = d["date"] - pd.to_timedelta((d["date"].dt.dayofweek + 1) % 7, unit="D")
@@ -201,11 +252,12 @@ def main() -> int:
     fio.save(funnel_by_sequence(log), "02b_funnel_validation")
     fio.save(funnel_by_timestamps(log, "device_category")
              .rename(columns={"device_category": "segment_value"}), "03_funnel_by_device")
-    fio.save(funnel_by_timestamps(log, "source_medium")
-             .rename(columns={"source_medium": "segment_value"}), "04_funnel_by_source")
+    fio.save(fold_long_tail(funnel_by_timestamps(log, "source_medium")
+             .rename(columns={"source_medium": "segment_value"})), "04_funnel_by_source")
     fio.save(funnel_by_timestamps(log, "visitor_type")
              .rename(columns={"visitor_type": "segment_value"}), "05_funnel_by_visitor_type")
     fio.save(cohort_retention(log), "06_cohort_retention")
+    fio.save(funnel_by_sessions(log), "09_funnel_session_scoped")
 
     rev = (log[log.event_name == "purchase"]
            .groupby(["device_category", "source_medium"])

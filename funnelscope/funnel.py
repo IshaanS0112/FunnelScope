@@ -111,7 +111,47 @@ def with_rates(df: pd.DataFrame) -> pd.DataFrame:
 def worst_step(row: pd.Series) -> StageTransition:
     """The transition with the steepest percentage drop-off.
 
-    Deliberately distinct from the transition with the largest recoverable revenue —
-    they are usually different stages, and that difference is the finding.
+    NOT distinct from the transition with the largest recoverable revenue. In a
+    strictly ordered funnel the two rankings are identical by construction — see the
+    proof in funnelscope/sizing.py. Ranking by rate and ranking by dollars are one
+    fact, not two, and presenting them as corroborating evidence double-counts it.
     """
     return min(transitions(row), key=lambda t: t.step_conversion)
+
+
+def session_gap(user_row: pd.Series, session_row: pd.Series) -> dict:
+    """Compare the user-scoped funnel against the session-scoped one.
+
+    Session-scoped conversion is necessarily no higher than user-scoped conversion: a
+    user converts if ANY of their sessions does, so collapsing sessions into users can
+    only add conversions, never remove them. A session-scoped figure that comes out
+    *above* the user-scoped one is arithmetically impossible and means one of the two
+    queries is wrong, so it is checked rather than assumed.
+
+    The gap between them is the measurement this pair exists to produce: it is how much
+    of the funnel runs on people coming back. A small gap means the journey completes in
+    one sitting and session-level fixes are the whole game. A large gap means
+    re-engagement is doing much of the selling, and optimising a single session would be
+    attacking the wrong surface.
+    """
+    u_view, u_buy = float(user_row["viewed"]), float(user_row["purchased"])
+    s_view, s_buy = float(session_row["viewed"]), float(session_row["purchased"])
+    user_conv = u_buy / u_view if u_view else 0.0
+    session_conv = s_buy / s_view if s_view else 0.0
+
+    if session_conv > user_conv + 1e-12:
+        raise FunnelValidationError(
+            f"Session-scoped conversion ({session_conv:.4%}) exceeds user-scoped "
+            f"({user_conv:.4%}). That is impossible — a user converts if any of their "
+            f"sessions does — so one of the two funnel queries is wrong."
+        )
+
+    share = session_conv / user_conv if user_conv else 0.0
+    return {
+        "user_conversion": user_conv,
+        "session_conversion": session_conv,
+        "gap_pp": (user_conv - session_conv) * 100,
+        "session_share_of_user_conversion": share,
+        "return_visit_dependence": 1 - share,
+        "sessions_per_viewing_user": s_view / u_view if u_view else 0.0,
+    }

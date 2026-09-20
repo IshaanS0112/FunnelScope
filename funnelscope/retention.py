@@ -15,6 +15,45 @@ from __future__ import annotations
 import pandas as pd
 
 
+def densify(df: pd.DataFrame, last_date: pd.Timestamp) -> pd.DataFrame:
+    """Expand the grid to the full cohort x week rectangle, filling gaps with zero.
+
+    WHY THIS HAS TO HAPPEN BEFORE CENSORING IS MARKED. The retention query joins
+    cohorts to activity, so it emits a row only where `active_users > 0`. A week in
+    which nobody from a cohort came back produces no row at all -- which makes a
+    genuinely-zero cell indistinguishable from a cell that lies outside the data.
+    Censoring can only ever be marked on rows that exist, so on a sparse grid the
+    censored share is computed over observed cells only and comes out far too low; in
+    a grid that happens to end on a week boundary it comes out as exactly zero, and
+    the whole censoring apparatus silently tests nothing.
+
+    Densifying first separates the two cases properly:
+      * observable and nobody returned -> a real 0%, included in every average;
+      * not observable yet             -> censored, excluded from every average.
+
+    The horizon is set by the earliest cohort, which is the only one with a full
+    runway: weeks 0..floor((last_date - earliest_cohort_week) / 7). Later cohorts get
+    rows across that same range, and the ones past their own runway are exactly the
+    cells `mark_censored` will flag.
+    """
+    d = df.copy()
+    d["cohort_week"] = pd.to_datetime(d["cohort_week"])
+    sizes = d.groupby("cohort_week")["cohort_size"].max()
+    earliest = sizes.index.min()
+    horizon = max(int((pd.Timestamp(last_date) - earliest).days // 7),
+                  int(d["weeks_since_first"].max()))
+
+    grid = pd.MultiIndex.from_product(
+        [sizes.index, range(horizon + 1)],
+        names=["cohort_week", "weeks_since_first"]).to_frame(index=False)
+    out = grid.merge(d[["cohort_week", "weeks_since_first", "active_users"]],
+                     on=["cohort_week", "weeks_since_first"], how="left")
+    out["active_users"] = out["active_users"].fillna(0).astype(int)
+    out["cohort_size"] = out["cohort_week"].map(sizes).astype(int)
+    return out[["cohort_week", "cohort_size", "weeks_since_first", "active_users"]] \
+        .sort_values(["cohort_week", "weeks_since_first"]).reset_index(drop=True)
+
+
 def mark_censored(df: pd.DataFrame, last_date: pd.Timestamp) -> pd.DataFrame:
     """Tag (cohort_week, weeks_since_first) cells whose window runs past the data end.
 

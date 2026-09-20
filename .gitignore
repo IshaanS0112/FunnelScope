@@ -23,5 +23,9 @@ data/raw/
 *.log
 
 # NOT ignored, deliberately:
-#   data/processed/*.csv      committed so the dashboard runs without GCP
-#   data/processed/*.json     manifest + metrics, read by memo and dashboard
+#   data/processed/*.csv      committed so the dashboards run without GCP
+#   data/processed/*.json     manifest + metrics, read by the memo and both dashboards
+#   web/data.js               generated, but the static site is dead without it — it is
+#                             what makes the page open by double-click and deploy to
+#                             GitHub Pages with no build step
+#   docs/screenshots/*.png    referenced from the README

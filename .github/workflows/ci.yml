@@ -7,18 +7,41 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows is in the matrix because setup.ps1 claims to work there. A claim in a
+        # README that CI does not check is a claim that stops being true.
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Unit tests, SQL static checks, dashboard smoke test
+
+      - name: Unit tests, SQL static checks, front-end smoke tests
         run: pytest -q
-      - name: Full pipeline — fixture, analysis, memo
+
+      - name: Full pipeline — fixture, analysis, memo, site
         run: pytest -q -m slow
+
       - name: Memo must contain no unfilled template tokens
+        shell: bash
+        run: "! grep -q '{{' docs/MEMO.md"
+
+      - name: Static site must carry the provenance banner it was built with
+        shell: bash
         run: |
-          ! grep -q '{{' docs/MEMO.md
+          grep -q 'FUNNELSCOPE_DATA' web/data.js
+          python - <<'PY'
+          import json, pathlib, re, sys
+          text = pathlib.Path("web/data.js").read_text()
+          data = json.loads(text[text.index("{"):text.rindex(";")])
+          manifest = json.loads(pathlib.Path("data/processed/_manifest.json").read_text())
+          assert data["provenance"]["source"] == manifest["source"], (
+              "web/data.js provenance disagrees with the manifest")
+          print("provenance consistent:", manifest["source"])
+          PY

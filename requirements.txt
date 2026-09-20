@@ -1,4 +1,6 @@
-# Runtime — the dashboard and the analysis package
+# Runtime — the analysis package and the Streamlit dashboard.
+# Python 3.12 is the pinned target (setup.sh / setup.ps1 / CI); some of these still
+# lack 3.13 wheels on Windows.
 pandas>=2.0
 streamlit>=1.30
 
@@ -7,10 +9,15 @@ numpy>=1.24
 matplotlib>=3.7
 jupyter>=1.0
 
-# Tests
+# Tests. The heavier dependencies live here on purpose: funnelscope/ implements the
+# z-test against math.erfc and Holm by hand so the runtime needs neither, and the test
+# suite checks both against the reference implementations.
 pytest>=7.4
-scipy>=1.11      # cross-checks the hand-rolled z-test in tests only
-sqlglot>=20.0    # parses the SQL against the BigQuery dialect in tests only
+scipy>=1.11         # cross-checks the hand-rolled two-proportion z-test
+statsmodels>=0.14   # cross-checks the hand-rolled Holm-Bonferroni adjustment
+sqlglot>=20.0       # parses every query against the BigQuery dialect
 
 # Only needed to re-export from BigQuery (scripts/run_queries.py):
 #   pip install google-cloud-bigquery db-dtypes
+#
+# The static site in web/ has no dependencies at all — no npm, no build step.

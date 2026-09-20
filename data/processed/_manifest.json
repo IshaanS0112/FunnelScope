@@ -1,6 +1,6 @@
 {
   "source": "synthetic-fixture",
-  "generated_at": "2026-08-31T10:53:20+00:00",
+  "generated_at": "2026-09-20T10:27:00+00:00",
   "dataset": "synthetic GA4-shaped event log (scripts/make_fixture.py)",
   "window_start": "2020-11-01",
   "window_end": "2021-01-31",

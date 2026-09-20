@@ -26,8 +26,22 @@ TWO THINGS THIS MODULE GETS RIGHT THAT THE STANDARD FORMULATION DOES NOT
 The usual write-up is `users_lost x improvement_pp x downstream x AOV`. But a
 percentage-point improvement is a change in the stage's *conversion rate*, and that
 rate's denominator is users *entering*, not users *lost*. Raising a 30% step to 35%
-recovers `users_entering x 0.05`, not `users_lost x 0.05`. The two differ by a factor
-of `1 / (1 - rate)` -- 43% too low at a 30% step, and worse the higher the rate.
+recovers `users_entering x 0.05`, not `users_lost x 0.05`.
+
+How far apart are they? Work it through rather than asserting a number:
+
+    lost           = entering x (1 - rate)
+    lost_basis     = entering x (1 - rate) x pp
+    entering_basis = entering x pp
+    lost_basis / entering_basis = (1 - rate)
+
+So the `users_lost` form is only `(1 - rate)` of the correct figure -- **30% short at
+a 30% step, half at a 50% step** -- and correcting it means multiplying by
+`1 / (1 - rate)`, which is **1.43x at a 30% step**. Those are two different numbers
+(0.70 vs 1.43) and conflating them is easy: an earlier draft of this module called the
+lost-basis figure "43% too low", which is the correction factor misread as the error.
+It is 30% short; the correction is 1.43x.
+
 `basis="lost"` is available for the other reading ("we recover x of the users we
 lose"), but it is a different claim and is labelled as one.
 
@@ -191,3 +205,74 @@ def ranking_matches_step_conversion(row: pd.Series, aov: float = 1.0,
     by_revenue = list(sized.sort_values("recoverable_revenue", ascending=False)["to_stage"])
     by_rate = list(sized.sort_values("step_conversion")["to_stage"])
     return by_revenue == by_rate
+
+
+# ---------------------------------------------------------------------------
+# Uncertainty on the sizing figures
+# ---------------------------------------------------------------------------
+
+def bootstrap_recoverable(row: pd.Series, aov: float, improvement_pp: float = 0.05,
+                          basis: str = "entering", n_resamples: int = 2_000,
+                          seed: int = 20201101,
+                          confidence: float = 0.95) -> pd.DataFrame:
+    """Percentile confidence intervals on recoverable revenue, per stage.
+
+    "$X recoverable" invites a reader to treat X as precise. It is not, and this
+    quantifies one of the reasons why.
+
+    METHOD. The funnel is a chain of nested binomials: of `viewed` users, `added_to_cart`
+    continued; of those, `began_checkout` continued; and so on. Each resample redraws
+    that chain from the observed step rates, then re-runs the full sizing model on the
+    redrawn counts. The interval is the 2.5th-97.5th percentile of the resulting
+    recoverable-revenue distribution. This is a parametric bootstrap, used because the
+    export is aggregate counts -- the per-user rows never leave BigQuery -- and a
+    nonparametric resample of users is therefore not available downstream.
+
+    WHAT IT DOES NOT COVER, which matters more than what it does. This interval
+    describes sampling variation in the counts alone. It says nothing about:
+      * `improvement_pp`, which is chosen rather than measured (that is what
+        `sensitivity_table` is for); or
+      * the model's load-bearing assumption, that recovered users purchase at the rate
+        of users who completed the stage unaided. That assumption is the dominant
+        source of error and it is not random, so no resampling scheme can price it.
+    A tight interval here therefore means "the counts are large", not "the number is
+    right". Quote it with that caveat attached or not at all.
+    """
+    import numpy as np
+
+    rng = np.random.default_rng(seed)
+    stages = [t for t in transitions(row)]
+    top = int(row[stages[0].from_stage])
+    rates = [t.step_conversion for t in stages]
+
+    draws = {t.to_stage: [] for t in stages}
+    lo_q = (1 - confidence) / 2
+    hi_q = 1 - lo_q
+
+    for _ in range(n_resamples):
+        counts = {stages[0].from_stage: top}
+        n = top
+        for t, rate in zip(stages, rates):
+            n = int(rng.binomial(n, rate)) if n > 0 else 0
+            counts[t.to_stage] = n
+        resampled = pd.Series(counts)
+        for t in transitions(resampled):
+            o = size_stage(resampled, t, aov, improvement_pp, basis)
+            draws[t.to_stage].append(o.recoverable_revenue)
+
+    point = size_all_stages(row, aov, improvement_pp, basis).set_index("to_stage")
+    out = []
+    for t in stages:
+        sample = np.asarray(draws[t.to_stage], dtype=float)
+        out.append({
+            "from_stage": t.from_stage,
+            "to_stage": t.to_stage,
+            "recoverable_revenue": float(point.loc[t.to_stage, "recoverable_revenue"]),
+            "ci_low": float(np.quantile(sample, lo_q)),
+            "ci_high": float(np.quantile(sample, hi_q)),
+            "confidence": confidence,
+            "n_resamples": n_resamples,
+            "covers": "sampling variation in the funnel counts only",
+        })
+    return pd.DataFrame(out).sort_values("recoverable_revenue",
+                                         ascending=False).reset_index(drop=True)

@@ -53,14 +53,29 @@ The only expected source of drift is users with two funnel events at the identic
 microsecond: method A uses strict `>` and drops them, method B keeps whatever order
 `STRING_AGG` emits. Anything larger is a bug.
 
-### What this funnel is not
+### User-scoped and session-scoped, and why both are reported
 
-It is **user-level, not session-level**. A user who views on Monday and buys three weeks
-later counts as converted. A session-scoped funnel (partitioning on `ga_session_id`) would
-be stricter and would produce lower conversion. Neither is more correct; they answer
-different questions. Ours answers "does this user ever get there", which is the right
-frame for prioritising product fixes and the wrong frame for evaluating a single campaign
-landing experience.
+The headline funnel is **user-level**: a user who views on Monday and buys three weeks
+later counts as converted. `sql/09_funnel_session_scoped.sql` runs the identical
+cumulative-ordering funnel partitioned on `(user_pseudo_id, ga_session_id)` instead, so
+the unit is the visit.
+
+Neither is more correct; they answer different questions. The user-scoped funnel answers
+*"does this user ever get there"*, which is the right frame for deciding what to fix in
+the product — someone who returns three days later and buys was not lost, and counting
+them as lost sends you chasing a drop-off that isn't one. The session-scoped funnel
+answers *"does this visit complete"*, which is the right frame for judging a landing
+experience or a single campaign, where a user who leaves and returns a week later is, for
+that campaign's purposes, a failure.
+
+**The comparison is the finding.** Session-scoped conversion is necessarily no higher
+than user-scoped conversion — a user converts if *any* of their sessions does, so
+collapsing sessions into users can only add conversions. `funnelscope.funnel.session_gap`
+asserts that inequality (a violation means one of the two queries is wrong) and reports
+the gap, which is a direct measure of how much of this funnel runs on return visits. A
+small gap means the journey completes in one sitting and session-level fixes are the whole
+game; a large gap means re-engagement is doing much of the selling, and optimising a
+single session would be attacking the wrong surface.
 
 ---
 
@@ -105,6 +120,26 @@ the data is tagged `censored` and is excluded from every average, curve and char
 heatmap reindexes over the full week range so a censored cell shows as a visible blank
 rather than a missing column — "not yet observable" rather than "no data".
 
+### Densify before censoring
+
+`06_cohort_retention.sql` joins cohorts to activity, so it emits a row only where
+`active_users > 0`. A week in which nobody from a cohort came back produces **no row at
+all** — which makes a genuinely-zero cell indistinguishable from a cell that lies outside
+the data. Censoring can only be marked on rows that exist, so on that sparse grid the
+censored share is computed over observed cells only and comes out far too low. On a grid
+that happens to end near a week boundary it comes out as exactly **zero**, and the entire
+censoring apparatus silently tests nothing while still printing a reassuring number.
+
+`funnelscope.retention.densify` therefore expands the grid to the full
+cohort × week rectangle first, filling absent cells with zero, using the earliest
+cohort's runway as the horizon. Only then is censoring marked. That separates the two
+cases properly:
+
+| Case | Before densifying | After |
+|---|---|---|
+| Observable, nobody returned | missing row — invisible | real 0%, included in the average |
+| Not observable yet | missing row — invisible | censored, excluded from the average |
+
 The pooled curve is `Σ active ÷ Σ cohort_size`, not the mean of per-cohort rates, so a
 100-user cohort cannot swing the curve as hard as a 5,000-user one.
 
@@ -122,8 +157,24 @@ recoverable(S, x)     = users_recovered × P(purchase | completed S) × AOV
 The usual write-up is `users_lost × improvement_pp × downstream × AOV`. That is wrong.
 A percentage-point improvement is a change in the stage's **conversion rate**, whose
 denominator is users *entering*, not users *lost*. Raising a 30% step to 35% recovers
-`users_entering × 0.05`. The `users_lost` form understates the same lift by a factor of
-`1/(1 − rate)` — 43% too low at a 30% step, and worse as the rate rises.
+`users_entering × 0.05`. How far off is the other form? Work it through rather than
+asserting a number:
+
+```
+lost           = entering × (1 − rate)
+lost_basis     = entering × (1 − rate) × pp
+entering_basis = entering × pp
+
+lost_basis ÷ entering_basis = (1 − rate)
+```
+
+The `users_lost` form is only `(1 − rate)` of the correct figure — **30% short at a 30%
+step, half at a 50% step** — and correcting it means multiplying by `1/(1 − rate)`,
+which is **1.43× at a 30% step**. Those are two different numbers, 0.70 and 1.43, and an
+earlier draft of this document conflated them by calling the lost-basis figure "43% too
+low". That was the correction factor misread as the size of the error. It is 30% short;
+the correction is 1.43×.
+
 Both bases are implemented (`basis="entering"` default, `basis="lost"` available); they
 are different claims and are labelled as such.
 
@@ -156,6 +207,22 @@ Sizing still earns its place, for two reasons that are not re-ranking:
    traffic volume and downstream conversion vary between segments in ways step conversion
    alone does not capture (`sizing.segment_gap_value`).
 
+### Confidence intervals, and what they do not cover
+
+`funnelscope.sizing.bootstrap_recoverable` puts a 95% interval on each stage's
+recoverable revenue. The funnel is a chain of nested binomials, so each resample redraws
+that chain from the observed step rates and re-runs the sizing model on the redrawn
+counts; the interval is the 2.5th–97.5th percentile of the result. It is a *parametric*
+bootstrap because the export is aggregate counts — the per-user rows never leave
+BigQuery — so a nonparametric resample of users is not available downstream.
+
+**Read the interval for what it is.** It prices sampling variation in the counts and
+nothing else. It does not price `improvement_pp`, which is chosen rather than measured
+(that is the sensitivity sweep's job), and it does not price the model's load-bearing
+assumption that recovered users purchase at the rate of unaided completers. That
+assumption dominates the error and is not random, so no resampling scheme can touch it.
+A tight interval here means "the counts are large", not "the number is right".
+
 ### Everything here is an upper bound
 
 The model applies the purchase rate of users who **did** complete a stage to users who did
@@ -177,10 +244,24 @@ segments — a channel with 600 users, a tablet cohort — which is exactly wher
 unguarded analysis invents findings. Reporting the interval alongside the point estimate
 is what keeps a 0.3pp difference from being written up as a discovery.
 
-**Not corrected for multiple comparisons.** Several segment comparisons are run; at
-α = 0.05 that inflates the family-wise error rate. For the headline comparisons the
-p-values are small enough that no correction would change the conclusion, but a
-borderline result from this pipeline should not be trusted without one.
+### Multiple comparisons
+
+Several segment comparisons are run, and at α = 0.05 each the family-wise error rate is
+not 0.05 but `1 − (1 − α)^m` — with four comparisons, 18.5%. An analysis that cuts a
+funnel four ways and reports whatever came back significant is manufacturing findings at
+a rate it has not disclosed.
+
+**Holm–Bonferroni is applied across the whole comparison family** and both raw and
+adjusted p-values are reported (`funnelscope.stats.holm_bonferroni`,
+`adjusted_p_values`, `correct_family`). Holm rather than plain Bonferroni because it is
+uniformly more powerful under the same assumptions: sort the p-values ascending, compare
+the k-th against `α/(m−k)`, and stop at the first failure. That step-down stop is the
+whole difference, and dropping it turns a valid procedure into an invalid one.
+
+For the headline comparisons the p-values are small enough that the correction changes
+nothing — which is worth saying explicitly rather than using it as an excuse to omit the
+correction. `metrics.json` records how many comparisons survived it and names any that
+did not, so a borderline result cannot be quoted as if it had.
 
 ---
 
@@ -226,3 +307,32 @@ Full refresh ≈ 4 GB against a 1 TiB monthly free allowance.
 4. **Obfuscated items.** No real product names, so no merchandising-level insight.
    Funnel and retention mechanics are unaffected.
 5. **No experiment.** Every recommendation is a hypothesis with a size attached.
+
+---
+
+## 10. Reproducibility and provenance
+
+**The manifest.** Every write of `data/processed/` stamps `_manifest.json` with
+`source: "bigquery"` or `source: "synthetic-fixture"`, the window, and a timestamp. The
+memo renderer, the dashboard, the static site and the notebook all read that stamp and
+label themselves from it. Fixture numbers therefore cannot render as a clean analysis —
+not by convention, but because the banner is derived from the same file the numbers are.
+`tests/` asserts the linkage in both directions: fixture data ⇒ banner present, real data
+⇒ banner absent.
+
+**The fixture is a real simulation, not a shortcut.** `scripts/make_fixture.py` emits a
+per-user event log with timestamps and session ids, then aggregates it *twice* — once by
+first-occurrence timestamps, once by event-sequence regex — exactly as `02` and `02b` do
+against BigQuery. A fixture that wrote the funnel CSV directly would satisfy the
+cross-validation gate trivially and test nothing.
+
+**Re-export diff.** `scripts/analyze.py` compares the new `metrics.json` against the
+previous one and prints every headline metric that moved, with the percentage change. A
+pipeline that silently produces different numbers on a re-run is the failure this catches:
+a query edited by hand, a window quietly widened, a channel that vanished because a source
+stopped firing. A re-export that moves a number you did not expect to move is a broken
+query until proven otherwise.
+
+**Gate ordering.** Monotonicity and cross-validation run *before* any metric is computed,
+and both raise. It is structurally impossible to produce `metrics.json` — and therefore a
+memo, a dashboard or a site — from a funnel that failed validation.

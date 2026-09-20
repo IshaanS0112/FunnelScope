@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FunnelScope — GA4 funnel, retention and opportunity analysis</title>
+<meta name="description" content="Ordered GA4 conversion funnel, cohort retention with right-censoring, opportunity sizing and RICE prioritisation. Static site, no server required.">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📉</text></svg>">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <h1>FunnelScope</h1>
+    <p class="tagline">
+      Where users drop out of a GA4 ecommerce funnel, what that is worth, and what to fix
+      first — with the correctness gates that let the numbers be trusted.
+    </p>
+    <p class="meta" id="meta-line"></p>
+    <nav class="tabs" role="tablist" id="tabs"></nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div id="provenance"></div>
+
+  <!-- ================= FUNNEL ================= -->
+  <section class="page" id="page-funnel" role="tabpanel" aria-labelledby="tab-funnel">
+    <h2>The funnel</h2>
+    <p class="lede">
+      An <strong>ordered</strong> funnel: each stage must occur <em>after</em> the previous
+      one, and each stage re-asserts every earlier condition. An unordered funnel — "did
+      this user ever do all four things" — counts someone who bought on Monday and browsed
+      more items on Friday as a completed journey, and inflates conversion for free.
+    </p>
+
+    <div class="grid cols-4" id="funnel-stats"></div>
+
+    <div class="controls">
+      <label>Segment by</label>
+      <div class="seg" id="segment-picker"></div>
+    </div>
+
+    <div class="card" id="funnel-chart-card"></div>
+
+    <h3>Step conversion by segment</h3>
+    <div class="card table-scroll" id="step-table"></div>
+
+    <h3>User-scoped vs session-scoped</h3>
+    <div id="scope-block"></div>
+
+    <details id="xval-block">
+      <summary>Correctness gate — the funnel computed twice, by unrelated methods</summary>
+      <p class="note">
+        Method A takes each user's first-occurrence timestamps and compares them. Method B
+        collapses each user's events into an ordered string (<code>V</code>, <code>C</code>,
+        <code>K</code>, <code>P</code>) and matches a sequence regex. The two share no logic
+        beyond the source table, so agreement is evidence rather than a tautology — an error
+        in timestamp comparison cannot hide inside regex matching.
+      </p>
+      <p class="note">
+        <strong>The pipeline refuses to emit metrics if they diverge by more than 0.5%</strong>,
+        so this page cannot exist for a funnel that failed validation. The only tolerated
+        drift is users with two funnel events at the identical microsecond: method A uses
+        strict <code>&gt;</code> and drops them, method B keeps whatever order
+        <code>STRING_AGG</code> emits.
+      </p>
+      <div class="table-scroll" id="xval-table"></div>
+    </details>
+  </section>
+
+  <!-- ================= RETENTION ================= -->
+  <section class="page" id="page-retention" role="tabpanel" aria-labelledby="tab-retention">
+    <h2>Retention</h2>
+    <p class="lede">
+      Weekly acquisition cohorts. Retention is <strong>any activity</strong> in week N — not
+      a purchase, not a session count.
+    </p>
+
+    <div class="banner caution">
+      <strong>Blank cells are not zeros.</strong>
+      A cohort formed in the last weeks of a fixed window physically cannot show week-8
+      retention: week 8 falls outside the data. Those cells are <em>right-censored</em> and
+      excluded from every average and curve on this page, rather than plotted as zeros.
+      Reading them as a retention collapse is the most common error in this chart, and it is
+      the trap this project was built to avoid.
+    </div>
+
+    <div class="grid cols-3" id="retention-stats"></div>
+
+    <h3>Cohort grid</h3>
+    <div class="card table-scroll" id="heatmap"></div>
+
+    <h3>Pooled retention curve</h3>
+    <div class="card" id="retention-curve"></div>
+    <p class="note" id="retention-note"></p>
+  </section>
+
+  <!-- ================= ACQUISITION ================= -->
+  <section class="page" id="page-acquisition" role="tabpanel" aria-labelledby="tab-acquisition">
+    <h2>Acquisition</h2>
+    <p class="lede">
+      A channel with <strong>high traffic and low conversion</strong> is a landing-page or
+      expectation-mismatch problem — spend less. A channel with <strong>low traffic and high
+      conversion</strong> is an acquisition-scale opportunity — spend more. They demand
+      opposite responses, and a ranked table hides the difference, so volume and rate stay
+      visible together here.
+    </p>
+
+    <div class="card" id="scatter"></div>
+
+    <h3>Channels</h3>
+    <div class="card table-scroll" id="channel-table"></div>
+    <p class="note">
+      Channels below 500 users are folded into <code>(long tail)</code>. A channel with 40
+      users and one purchase has a 2.5% conversion rate whose confidence interval contains
+      almost anything; reporting it as a finding would be noise dressed as signal.
+    </p>
+  </section>
+
+  <!-- ================= OPPORTUNITY ================= -->
+  <section class="page" id="page-opportunity" role="tabpanel" aria-labelledby="tab-opportunity">
+    <h2>What it is worth</h2>
+
+    <div class="card">
+      <pre><code>users_recovered(S, x) = min(users_entering_S × x,  users_lost_at_S)
+recoverable(S, x)     = users_recovered × P(purchase | completed S) × AOV</code></pre>
+      <p class="note">
+        The percentage-point lift applies to users <strong>entering</strong> the stage,
+        because that is the denominator of the conversion rate it changes. The common
+        <code>users_lost × pp</code> form is only <code>(1 − rate)</code> of this figure —
+        30% short at a 30% step, half at a 50% step — and correcting it means multiplying by
+        <code>1/(1 − rate)</code>, which is 1.43× at a 30% step.
+      </p>
+    </div>
+
+    <div class="banner fixture" style="background:var(--warn-soft);border-color:var(--warn)">
+      <strong style="color:var(--warn)">Upper bounds, not forecasts.</strong>
+      The model applies the purchase rate of users who <em>did</em> complete a stage to users
+      who did not. Recovered users are by construction the ones who needed recovering; they
+      almost certainly convert worse. These figures rank stages against each other. They do
+      not predict revenue.
+    </div>
+
+    <h3>Recoverable revenue at a 5pp lift</h3>
+    <div class="card table-scroll" id="opportunity-table"></div>
+
+    <div class="banner note" id="equivalence-note"></div>
+
+    <h3>Sensitivity to the improvement assumption</h3>
+    <div class="card table-scroll" id="sensitivity-table"></div>
+    <p class="note">
+      The absolute figures move across the sweep; the ranking does not. That stability is
+      the defensible claim, which is why the sweep is published instead of a single number.
+    </p>
+
+    <h3>Is the segment gap real?</h3>
+    <div id="significance"></div>
+
+    <h3>What I would do first</h3>
+    <div class="card table-scroll" id="rice-table"></div>
+    <div id="rice-detail"></div>
+    <p class="note">
+      <strong>Reach is measured</strong> — users affected, straight from the funnel.
+      <strong>Impact, confidence and effort are judgement.</strong> There is no engineering
+      team attached to this analysis and no estimate to draw on. They are declared with the
+      assumption behind each one so a reader who disagrees can change a single number and
+      watch the ranking move. The value of the framework is that the ranking is reproducible
+      from stated inputs, not that the scores are right.
+    </p>
+  </section>
+
+  <!-- ================= METHOD ================= -->
+  <section class="page" id="page-method" role="tabpanel" aria-labelledby="tab-method">
+    <h2>How this was built</h2>
+    <p class="lede">
+      The memo is the deliverable; this site supports it. Everything below is the short
+      version — <code>docs/methodology.md</code> in the repository is the long one.
+    </p>
+
+    <div class="card">
+      <h3 style="margin-top:0">Pipeline</h3>
+      <pre><code>sql/*.sql                    versioned, parameterised, documented
+   │  scripts/run_queries.py
+   ▼
+data/processed/*.csv         committed  ──►  _manifest.json records provenance
+   │  scripts/analyze.py     ── correctness gates run FIRST ──
+   ▼
+data/processed/metrics.json  every number quoted anywhere
+   ├─► scripts/render_memo.py ──► docs/MEMO.md
+   ├─► scripts/build_web.py   ──► this site
+   └─► app/streamlit_app.py   ──► local dashboard</code></pre>
+      <p class="note">
+        BigQuery Sandbox expires tables after 60 days and blocks DML, so nothing is
+        persisted server-side — the repository persists <em>results</em>. The consequence is
+        the good part: because this page reads exported data rather than querying BigQuery
+        live, anyone can open it. A live-query dashboard would run for exactly one person
+        and would be dead in 60 days.
+      </p>
+    </div>
+
+    <div class="grid cols-2">
+      <div class="card">
+        <h3 style="margin-top:0">Gates that block publication</h3>
+        <p class="note">
+          <strong>Monotonicity</strong>, on every segment table: each stage must be a subset
+          of the one before it. A violation means the SQL's stage predicates are not
+          cumulative, which is the most common way a funnel query is silently wrong.
+        </p>
+        <p class="note">
+          <strong>Cross-validation</strong>: the funnel computed a second time by a
+          structurally unrelated method, tolerance 0.5%.
+        </p>
+        <p class="note">
+          <strong>Scope sanity</strong>: session-scoped conversion cannot exceed user-scoped
+          conversion. If it does, one of the two queries is wrong.
+        </p>
+        <p class="note">
+          Both gates run <em>before</em> any metric is computed and both raise. It is
+          structurally impossible to produce a memo, a dashboard or this page from a funnel
+          that failed validation.
+        </p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Statistics</h3>
+        <p class="note">
+          Pooled two-proportion z-test for the statistic, unpooled Wald interval for the CI
+          on the difference, two-sided at α = 0.05. Implemented against
+          <code>math.erfc</code> so the runtime has no SciPy dependency, and cross-checked
+          against <code>scipy.stats.norm</code> in the test suite.
+        </p>
+        <p class="note">
+          <strong>Holm–Bonferroni across the comparison family.</strong> Running several
+          segment comparisons at α = 0.05 each does not hold the family-wise error rate at
+          0.05; with four comparisons it is 18.5%. Both raw and adjusted p-values are
+          reported, and the corrected verdict is the one quoted.
+        </p>
+        <p class="note">
+          Why bother at these sample sizes? With tens of thousands of users almost anything
+          is significant and the test looks like a formality. It stops being one on the
+          small segments — a 600-user channel, a tablet cohort — which is exactly where an
+          unguarded analysis invents findings.
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">What this data cannot tell you</h3>
+      <p class="note">
+        It records <strong>what</strong> users did and is silent on <strong>why</strong>.
+        The largest single threat to the headline finding is that
+        <code>user_pseudo_id</code> is per browser, not per person: someone who browses on a
+        phone and buys on a laptop appears as two users, one of whom never converts. That
+        inflates the measured device gap by an unknown amount. Next steps that would settle
+        it: session recordings on the weakest device's product page, a cart-abandonment exit
+        survey, and an A/B test on the top recommendation.
+      </p>
+      <p class="note">
+        This is Google's public obfuscated GA4 sample export — a demo dataset, not a
+        business problem personally uncovered. The analysis is real; the business is not
+        mine. The repository says so on its front page rather than burying it.
+      </p>
+    </div>
+
+    <details id="diff-block">
+      <summary>What moved since the previous export</summary>
+      <p class="note">
+        <code>scripts/analyze.py</code> diffs each new <code>metrics.json</code> against the
+        previous one. A pipeline that silently produces different numbers on a re-run is the
+        failure this catches: a query edited by hand, a window quietly widened, a channel
+        that vanished because a source stopped firing. A re-export that moves a number you
+        did not expect to move is a broken query until proven otherwise.
+      </p>
+      <div class="table-scroll" id="diff-table"></div>
+    </details>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p id="footer-line"></p>
+    <p>
+      <a href="https://github.com/IshaanS0112/FunnelScope">Source</a> ·
+      <a href="https://github.com/IshaanS0112/FunnelScope/blob/main/docs/MEMO.md">The memo (the actual deliverable)</a> ·
+      <a href="https://github.com/IshaanS0112/FunnelScope/blob/main/docs/methodology.md">Methodology</a> ·
+      <a href="https://github.com/IshaanS0112/FunnelScope/tree/main/sql">SQL</a>
+    </p>
+  </div>
+</footer>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

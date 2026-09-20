@@ -16,9 +16,14 @@ expires both after 60 days and blocks DML, so the repo persists *results*, not
 | `06_cohort_retention.sql` | Weekly cohort retention, with cohort sizes | `06_cohort_retention.csv` | ~0.4 GB |
 | `07_revenue_by_segment.sql` | Purchases, revenue and AOV by device and channel | `07_revenue_by_segment.csv` | ~0.3 GB |
 | `08_event_params_reference.sql` | How to extract nested `event_params` (reference only) | `08_event_params_sample.csv` | ~1.2 GB · **narrow the range** |
+| `09_funnel_session_scoped.sql` | The same funnel scoped to the session, not the user | `09_funnel_session_scoped.csv` | ~0.9 GB |
 
-Total for a full refresh excluding `08`: **≈ 4 GB**, against the sandbox's 1 TiB
-monthly allowance. The whole project can be re-run roughly 250 times a month for free.
+Total for a full refresh excluding `08`: **≈ 4.9 GB**, against the sandbox's 1 TiB
+monthly allowance — roughly 200 free re-runs a month. `09` is the second most expensive
+query in the set because `ga_session_id` lives inside `event_params`, and reading one key
+out of that column costs the same as reading the column.
+
+Actual dry-run bytes, logged per run, are in [`docs/QUERY_COSTS.md`](../docs/QUERY_COSTS.md).
 
 ## Cost control, in order of how much they matter
 
@@ -43,6 +48,10 @@ monthly allowance. The whole project can be re-run roughly 250 times a month for
 - **Segment attribution is first-touch** in `03`/`04` (a funnel follows one journey) and
   **event-level in `07`** (revenue belongs to the transaction). Deliberate, documented in
   each file, and discussed in `docs/methodology.md`.
+- **Scope is the user in `02`–`05`, the session in `09`.** Both are the same cumulative
+  funnel; only the partition key differs. Session-scoped conversion is necessarily no
+  higher, and the gap measures how much of the funnel depends on return visits —
+  `funnelscope.funnel.session_gap` asserts the inequality and reports the gap.
 - **Every funnel query emits the same four columns** — `viewed`, `added_to_cart`,
   `began_checkout`, `purchased` — plus `segment_type` / `segment_value`, so the
   application code has exactly one funnel shape to handle.

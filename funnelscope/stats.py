@@ -100,3 +100,90 @@ class ProportionTest:
             "significant": self.significant,
             "verdict": self.verdict(),
         }
+
+
+# ---------------------------------------------------------------------------
+# Multiple comparisons
+# ---------------------------------------------------------------------------
+# Running several segment comparisons at alpha = 0.05 each does not hold the
+# family-wise error rate at 0.05. With m independent tests the probability of at
+# least one false positive is 1 - (1 - alpha)^m: four comparisons is already 18.5%.
+# An analysis that cuts a funnel four ways and reports whatever came back significant
+# is therefore manufacturing findings at a rate it has not disclosed.
+#
+# Holm-Bonferroni is used rather than plain Bonferroni because it is uniformly more
+# powerful and costs nothing: same assumptions, same guarantee, strictly more rejections.
+
+def holm_bonferroni(p_values: list[float], alpha: float = 0.05) -> list[bool]:
+    """Holm-Bonferroni step-down. Returns one reject/keep decision per input p-value.
+
+    Sort the p-values ascending. The k-th smallest is compared against
+    `alpha / (m - k)`. The procedure stops at the first failure: every remaining
+    hypothesis is retained, whatever its own p-value. That step-down stop is the
+    whole difference from Bonferroni, and forgetting it is the usual implementation
+    bug -- it turns a valid procedure into an invalid, more powerful one.
+
+    Results are returned in the caller's original order, not in sorted order.
+    """
+    m = len(p_values)
+    if not m:
+        return []
+    order = sorted(range(m), key=lambda i: p_values[i])
+    reject = [False] * m
+    for rank, i in enumerate(order):
+        if p_values[i] <= alpha / (m - rank):
+            reject[i] = True
+        else:
+            break
+    return reject
+
+
+def adjusted_p_values(p_values: list[float]) -> list[float]:
+    """Holm-adjusted p-values: `min(1, max over the step-down prefix of (m-k) * p_k)`.
+
+    The running maximum enforces monotonicity -- an adjusted p-value can never be
+    smaller than that of a more significant hypothesis. Reporting these alongside the
+    raw values lets a reader see exactly how much the correction cost, which is the
+    honest way to present it.
+    """
+    m = len(p_values)
+    if not m:
+        return []
+    order = sorted(range(m), key=lambda i: p_values[i])
+    out = [0.0] * m
+    running = 0.0
+    for rank, i in enumerate(order):
+        running = max(running, (m - rank) * p_values[i])
+        out[i] = min(1.0, running)
+    return out
+
+
+def correct_family(tests: list[ProportionTest], alpha: float = 0.05) -> list[dict]:
+    """Apply Holm across a family of comparisons and return them fully annotated.
+
+    Every comparison the pipeline runs belongs to one family. The corrected verdict,
+    not the raw one, is what the memo is allowed to quote.
+    """
+    raw = [t.p_value for t in tests]
+    rejects = holm_bonferroni(raw, alpha)
+    adjusted = adjusted_p_values(raw)
+    out = []
+    for t, rej, adj in zip(tests, rejects, adjusted):
+        d = t.to_dict()
+        d["p_value_adjusted"] = adj
+        d["significant_raw"] = d["significant"]
+        d["significant_holm"] = bool(rej)
+        d["significant"] = bool(rej)          # the corrected verdict is THE verdict
+        d["family_size"] = len(tests)
+        d["correction"] = "Holm-Bonferroni"
+        if d["significant_raw"] and not rej:
+            d["verdict"] += (
+                f" Survives at alpha = {alpha} alone but NOT after Holm correction "
+                f"across {len(tests)} comparisons (adjusted p = {adj:.3f}) — "
+                f"treat as unproven.")
+        elif rej:
+            d["verdict"] += (
+                f" Holds after Holm correction across {len(tests)} comparisons "
+                f"(adjusted p = {adj:.2e}).")
+        out.append(d)
+    return out

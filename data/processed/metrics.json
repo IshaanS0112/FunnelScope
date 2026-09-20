@@ -6,39 +6,39 @@
     "dataset": "synthetic GA4-shaped event log (scripts/make_fixture.py)",
     "window_start": "2020-11-01",
     "window_end": "2021-01-31",
-    "generated_at": "2026-08-31T10:53:20+00:00"
+    "generated_at": "2026-09-20T10:27:00+00:00"
   },
   "validation": {
     "monotonic": true,
     "cross_validation": [
       {
         "stage": "viewed",
-        "method_a_timestamps": 60000,
-        "method_b_sequence": 60000,
+        "method_a_timestamps": 59290,
+        "method_b_sequence": 59290,
         "abs_diff": 0,
         "rel_diff": 0.0,
         "within_tolerance": true
       },
       {
         "stage": "added_to_cart",
-        "method_a_timestamps": 15798,
-        "method_b_sequence": 15798,
+        "method_a_timestamps": 15422,
+        "method_b_sequence": 15422,
         "abs_diff": 0,
         "rel_diff": 0.0,
         "within_tolerance": true
       },
       {
         "stage": "began_checkout",
-        "method_a_timestamps": 6997,
-        "method_b_sequence": 6997,
+        "method_a_timestamps": 6774,
+        "method_b_sequence": 6774,
         "abs_diff": 0,
         "rel_diff": 0.0,
         "within_tolerance": true
       },
       {
         "stage": "purchased",
-        "method_a_timestamps": 4134,
-        "method_b_sequence": 4134,
+        "method_a_timestamps": 3960,
+        "method_b_sequence": 3960,
         "abs_diff": 0,
         "rel_diff": 0.0,
         "within_tolerance": true
@@ -46,243 +46,306 @@
     ]
   },
   "funnel": {
-    "viewed": 60000,
-    "added_to_cart": 15798,
-    "began_checkout": 6997,
-    "purchased": 4134,
-    "end_to_end_conversion": 0.0689,
+    "viewed": 59290,
+    "added_to_cart": 15422,
+    "began_checkout": 6774,
+    "purchased": 3960,
+    "end_to_end_conversion": 0.06679035250463822,
     "step_conversion": {
-      "added_to_cart": 0.2633,
-      "began_checkout": 0.4429041650841879,
-      "purchased": 0.5908246391310562
+      "added_to_cart": 0.2601113172541744,
+      "began_checkout": 0.4392426403838672,
+      "purchased": 0.5845881310894597
     },
     "worst_step": {
       "from": "viewed",
       "to": "added_to_cart",
-      "step_conversion": 0.2633,
-      "lost": 44202
+      "step_conversion": 0.2601113172541744,
+      "lost": 43868
     }
   },
-  "aov": 63.51378326076439,
+  "aov": 63.89430303030303,
   "opportunities": [
     {
       "from_stage": "viewed",
       "to_stage": "added_to_cart",
-      "users_entering": 60000,
-      "users_completing": 15798,
-      "users_lost": 44202,
-      "step_conversion": 0.2633,
-      "downstream_conversion": 0.26167869350550704,
-      "aov": 63.51378326076439,
+      "users_entering": 59290,
+      "users_completing": 15422,
+      "users_lost": 43868,
+      "step_conversion": 0.2601113172541744,
+      "downstream_conversion": 0.25677603423680456,
+      "aov": 63.89430303030303,
       "improvement_pp": 0.05,
       "basis": "entering",
-      "users_recovered": 3000.0,
-      "recoverable_revenue": 49860.6114698063
+      "users_recovered": 2964.5,
+      "recoverable_revenue": 48637.14556348074
     },
     {
       "from_stage": "added_to_cart",
       "to_stage": "began_checkout",
-      "users_entering": 15798,
-      "users_completing": 6997,
-      "users_lost": 8801,
-      "step_conversion": 0.4429041650841879,
-      "downstream_conversion": 0.5908246391310562,
-      "aov": 63.51378326076439,
+      "users_entering": 15422,
+      "users_completing": 6774,
+      "users_lost": 8648,
+      "step_conversion": 0.4392426403838672,
+      "downstream_conversion": 0.5845881310894597,
+      "aov": 63.89430303030303,
       "improvement_pp": 0.05,
       "basis": "entering",
-      "users_recovered": 789.9000000000001,
-      "recoverable_revenue": 29641.398828355013
+      "users_recovered": 771.1,
+      "recoverable_revenue": 28802.012457041634
     },
     {
       "from_stage": "began_checkout",
       "to_stage": "purchased",
-      "users_entering": 6997,
-      "users_completing": 4134,
-      "users_lost": 2863,
-      "step_conversion": 0.5908246391310562,
+      "users_entering": 6774,
+      "users_completing": 3960,
+      "users_lost": 2814,
+      "step_conversion": 0.5845881310894597,
       "downstream_conversion": 1.0,
-      "aov": 63.51378326076439,
+      "aov": 63.89430303030303,
       "improvement_pp": 0.05,
       "basis": "entering",
-      "users_recovered": 349.85,
-      "recoverable_revenue": 22220.297073778424
+      "users_recovered": 338.70000000000005,
+      "recoverable_revenue": 21641.00043636364
     }
   ],
   "sizing_ranking_equals_step_conversion": true,
   "sensitivity": [
     {
       "to_stage": "added_to_cart",
-      "0.01": 9972.12229396126,
-      "0.02": 19944.24458792252,
-      "0.05": 49860.6114698063,
-      "0.1": 99721.2229396126
+      "0.01": 9727.429112696149,
+      "0.02": 19454.858225392298,
+      "0.05": 48637.14556348074,
+      "0.1": 97274.29112696149
     },
     {
       "to_stage": "began_checkout",
-      "0.01": 5928.279765671002,
-      "0.02": 11856.559531342004,
-      "0.05": 29641.398828355013,
-      "0.1": 59282.79765671003
+      "0.01": 5760.402491408327,
+      "0.02": 11520.804982816653,
+      "0.05": 28802.012457041634,
+      "0.1": 57604.02491408327
     },
     {
       "to_stage": "purchased",
-      "0.01": 4444.059414755684,
-      "0.02": 8888.118829511368,
-      "0.05": 22220.297073778424,
-      "0.1": 44440.59414755685
+      "0.01": 4328.200087272727,
+      "0.02": 8656.400174545453,
+      "0.05": 21641.00043636364,
+      "0.1": 43282.00087272728
+    }
+  ],
+  "sizing_intervals": [
+    {
+      "from_stage": "viewed",
+      "to_stage": "added_to_cart",
+      "recoverable_revenue": 48637.14556348074,
+      "ci_low": 47319.573836353826,
+      "ci_high": 49977.73264943408,
+      "confidence": 0.95,
+      "n_resamples": 2000,
+      "covers": "sampling variation in the funnel counts only"
+    },
+    {
+      "from_stage": "added_to_cart",
+      "to_stage": "began_checkout",
+      "recoverable_revenue": 28802.012457041634,
+      "ci_low": 28057.965223886284,
+      "ci_high": 29521.840690361885,
+      "confidence": 0.95,
+      "n_resamples": 2000,
+      "covers": "sampling variation in the funnel counts only"
+    },
+    {
+      "from_stage": "began_checkout",
+      "to_stage": "purchased",
+      "recoverable_revenue": 21641.00043636364,
+      "ci_low": 21155.403733333333,
+      "ci_high": 22142.570715151516,
+      "confidence": 0.95,
+      "n_resamples": 2000,
+      "covers": "sampling variation in the funnel counts only"
     }
   ],
   "biggest_opportunity": {
     "from_stage": "viewed",
     "to_stage": "added_to_cart",
-    "users_entering": 60000,
-    "users_completing": 15798,
-    "users_lost": 44202,
-    "step_conversion": 0.2633,
-    "downstream_conversion": 0.26167869350550704,
-    "aov": 63.51378326076439,
+    "users_entering": 59290,
+    "users_completing": 15422,
+    "users_lost": 43868,
+    "step_conversion": 0.2601113172541744,
+    "downstream_conversion": 0.25677603423680456,
+    "aov": 63.89430303030303,
     "improvement_pp": 0.05,
     "basis": "entering",
-    "users_recovered": 3000.0,
-    "recoverable_revenue": 49860.6114698063
+    "users_recovered": 2964.5,
+    "recoverable_revenue": 48637.14556348074
   },
   "significance_tests": [
     {
       "comparison": "mobile vs desktop",
-      "rate_a": 0.041710480196284615,
-      "rate_b": 0.10484430477900665,
-      "difference_pp": -6.313382458272204,
-      "z": -29.14281450306656,
-      "p_value": 1.0302845160107099e-186,
-      "ci_low_pp": -6.756172387694627,
-      "ci_high_pp": -5.870592528849781,
+      "rate_a": 0.0402411891787315,
+      "rate_b": 0.10170890778502435,
+      "difference_pp": -6.146771860629285,
+      "z": -28.63263596942142,
+      "p_value": 2.637524668217956e-180,
+      "ci_low_pp": -6.585763195472376,
+      "ci_high_pp": -5.7077805257861955,
       "significant": true,
-      "verdict": "mobile converts 6.31pp lower than desktop (4.17% vs 10.48%). z = -29.14, p = 1.03e-186, 95% CI [-6.76, -5.87]pp. Real, not sampling noise."
+      "verdict": "mobile converts 6.15pp lower than desktop (4.02% vs 10.17%). z = -28.63, p = 2.64e-180, 95% CI [-6.59, -5.71]pp. Real, not sampling noise. Holds after Holm correction across 3 comparisons (adjusted p = 5.28e-180).",
+      "p_value_adjusted": 5.275049336435912e-180,
+      "significant_raw": true,
+      "significant_holm": true,
+      "family_size": 3,
+      "correction": "Holm-Bonferroni"
     },
     {
       "comparison": "new vs returning",
-      "rate_a": 0.04302238104194094,
-      "rate_b": 0.13192853870819973,
-      "difference_pp": -8.890615766625878,
-      "z": -39.056977084204775,
-      "p_value": 0.0,
-      "ci_low_pp": -9.428289465127818,
-      "ci_high_pp": -8.352942068123939,
+      "rate_a": 0.04193041740040931,
+      "rate_b": 0.12728746814917766,
+      "difference_pp": -8.535705074876834,
+      "z": -37.82348810602893,
+      "p_value": 4.67200553743e-313,
+      "ci_low_pp": -9.06847651821408,
+      "ci_high_pp": -8.002933631539587,
       "significant": true,
-      "verdict": "new converts 8.89pp lower than returning (4.30% vs 13.19%). z = -39.06, p = 0.00e+00, 95% CI [-9.43, -8.35]pp. Real, not sampling noise."
+      "verdict": "new converts 8.54pp lower than returning (4.19% vs 12.73%). z = -37.82, p = 4.67e-313, 95% CI [-9.07, -8.00]pp. Real, not sampling noise. Holds after Holm correction across 3 comparisons (adjusted p = 1.40e-312).",
+      "p_value_adjusted": 1.40160166123e-312,
+      "significant_raw": true,
+      "significant_holm": true,
+      "family_size": 3,
+      "correction": "Holm-Bonferroni"
     },
     {
       "comparison": "newsletter / email vs partner-a / referral",
-      "rate_a": 0.13121869782971618,
-      "rate_b": 0.013793103448275862,
-      "difference_pp": 11.742559438144031,
-      "z": 11.398039263305591,
-      "p_value": 4.276419230173956e-30,
-      "ci_low_pp": 10.359566919294389,
-      "ci_high_pp": 13.125551956993675,
+      "rate_a": 0.12855209742895804,
+      "rate_b": 0.01399825021872266,
+      "difference_pp": 11.455384721023538,
+      "z": 11.132674711068832,
+      "p_value": 8.698553584195184e-29,
+      "ci_low_pp": 10.069848317663018,
+      "ci_high_pp": 12.840921124384058,
       "significant": true,
-      "verdict": "newsletter / email converts 11.74pp higher than partner-a / referral (13.12% vs 1.38%). z = 11.40, p = 4.28e-30, 95% CI [+10.36, +13.13]pp. Real, not sampling noise."
+      "verdict": "newsletter / email converts 11.46pp higher than partner-a / referral (12.86% vs 1.40%). z = 11.13, p = 8.70e-29, 95% CI [+10.07, +12.84]pp. Real, not sampling noise. Holds after Holm correction across 3 comparisons (adjusted p = 8.70e-29).",
+      "p_value_adjusted": 8.698553584195184e-29,
+      "significant_raw": true,
+      "significant_holm": true,
+      "family_size": 3,
+      "correction": "Holm-Bonferroni"
     }
   ],
+  "multiple_comparisons": {
+    "method": "Holm-Bonferroni",
+    "alpha": 0.05,
+    "family_size": 3,
+    "n_significant_raw": 3,
+    "n_significant_after_correction": 3,
+    "changed_by_correction": []
+  },
+  "scope_comparison": {
+    "user_conversion": 0.06679035250463822,
+    "session_conversion": 0.038438185191431946,
+    "gap_pp": 2.835216731320627,
+    "session_share_of_user_conversion": 0.5755050505050505,
+    "return_visit_dependence": 0.4244949494949495,
+    "sessions_per_viewing_user": 1.0
+  },
   "segment_gap": {
     "segment_a": "mobile",
     "segment_b": "desktop",
-    "conversion_a": 0.041710480196284615,
-    "conversion_b": 0.10484430477900665,
-    "gap_pp": 6.313382458272204,
-    "additional_purchases_if_closed": 1981.328816879566,
-    "value_if_closed": 125841.68904359548
+    "conversion_a": 0.0402411891787315,
+    "conversion_b": 0.10170890778502435,
+    "gap_pp": 6.146771860629285,
+    "additional_purchases_if_closed": 1906.2983571369602,
+    "value_if_closed": 121801.60489707776
   },
   "segments": {
     "device": [
       {
         "segment_type": "device_category",
         "segment_value": "mobile",
-        "viewed": 31383,
-        "added_to_cart": 6691,
-        "began_checkout": 2531,
-        "purchased": 1309
+        "viewed": 31013,
+        "added_to_cart": 6523,
+        "began_checkout": 2443,
+        "purchased": 1248
       },
       {
         "segment_type": "device_category",
         "segment_value": "desktop",
-        "viewed": 24503,
-        "added_to_cart": 8030,
-        "began_checkout": 4009,
-        "purchased": 2569
+        "viewed": 24226,
+        "added_to_cart": 7855,
+        "began_checkout": 3890,
+        "purchased": 2464
       },
       {
         "segment_type": "device_category",
         "segment_value": "tablet",
-        "viewed": 4114,
-        "added_to_cart": 1077,
-        "began_checkout": 457,
-        "purchased": 256
+        "viewed": 4051,
+        "added_to_cart": 1044,
+        "began_checkout": 441,
+        "purchased": 248
       }
     ],
     "source": [
       {
         "segment_type": "source_medium",
         "segment_value": "google / organic",
-        "viewed": 20542,
-        "added_to_cart": 5525,
-        "began_checkout": 2369,
-        "purchased": 1363
+        "viewed": 20325,
+        "added_to_cart": 5399,
+        "began_checkout": 2293,
+        "purchased": 1307
       },
       {
         "segment_type": "source_medium",
         "segment_value": "(direct) / (none)",
-        "viewed": 16169,
-        "added_to_cart": 5084,
-        "began_checkout": 2471,
-        "purchased": 1516
+        "viewed": 15951,
+        "added_to_cart": 4948,
+        "began_checkout": 2381,
+        "purchased": 1441
       },
       {
         "segment_type": "source_medium",
         "segment_value": "google / cpc",
-        "viewed": 9575,
-        "added_to_cart": 1877,
-        "began_checkout": 659,
-        "purchased": 330
+        "viewed": 9455,
+        "added_to_cart": 1832,
+        "began_checkout": 637,
+        "purchased": 317
       },
       {
         "segment_type": "source_medium",
         "segment_value": "youtube.com / referral",
-        "viewed": 5330,
-        "added_to_cart": 767,
-        "began_checkout": 231,
-        "purchased": 109
+        "viewed": 5273,
+        "added_to_cart": 755,
+        "began_checkout": 228,
+        "purchased": 106
       },
       {
         "segment_type": "source_medium",
         "segment_value": "shop.googlemerch / referral",
-        "viewed": 3604,
-        "added_to_cart": 1217,
-        "began_checkout": 600,
-        "purchased": 386
+        "viewed": 3567,
+        "added_to_cart": 1194,
+        "began_checkout": 586,
+        "purchased": 372
       },
       {
         "segment_type": "source_medium",
         "segment_value": "newsletter / email",
-        "viewed": 2995,
-        "added_to_cart": 1042,
-        "began_checkout": 565,
-        "purchased": 393
+        "viewed": 2956,
+        "added_to_cart": 1017,
+        "began_checkout": 551,
+        "purchased": 380
       },
       {
         "segment_type": "source_medium",
         "segment_value": "partner-a / referral",
-        "viewed": 1160,
-        "added_to_cart": 158,
-        "began_checkout": 58,
+        "viewed": 1143,
+        "added_to_cart": 152,
+        "began_checkout": 55,
         "purchased": 16
       },
       {
         "segment_type": "source_medium",
         "segment_value": "partner-b / referral",
-        "viewed": 625,
-        "added_to_cart": 128,
-        "began_checkout": 44,
+        "viewed": 620,
+        "added_to_cart": 125,
+        "began_checkout": 43,
         "purchased": 21
       }
     ],
@@ -290,18 +353,18 @@
       {
         "segment_type": "visitor_type",
         "segment_value": "new",
-        "viewed": 42536,
-        "added_to_cart": 9299,
-        "began_checkout": 3520,
-        "purchased": 1830
+        "viewed": 42022,
+        "added_to_cart": 9069,
+        "began_checkout": 3416,
+        "purchased": 1762
       },
       {
         "segment_type": "visitor_type",
         "segment_value": "returning",
-        "viewed": 17464,
-        "added_to_cart": 6499,
-        "began_checkout": 3477,
-        "purchased": 2304
+        "viewed": 17268,
+        "added_to_cart": 6353,
+        "began_checkout": 3358,
+        "purchased": 2198
       }
     ]
   },
@@ -316,64 +379,99 @@
       },
       {
         "weeks_since_first": 1,
-        "active_users": 4741,
+        "active_users": 6807,
         "cohort_size": 56568,
         "cohorts_observed": 12,
-        "retention_rate": 0.08381063498797907
+        "retention_rate": 0.12033305048790836
       },
       {
         "weeks_since_first": 2,
-        "active_users": 4299,
+        "active_users": 5457,
         "cohort_size": 52031,
         "cohorts_observed": 11,
-        "retention_rate": 0.08262382041475275
+        "retention_rate": 0.10487978320616556
       },
       {
         "weeks_since_first": 3,
-        "active_users": 3878,
+        "active_users": 3968,
         "cohort_size": 46785,
         "cohorts_observed": 10,
-        "retention_rate": 0.0828898151116811
+        "retention_rate": 0.08481350860318478
       },
       {
         "weeks_since_first": 4,
-        "active_users": 3443,
+        "active_users": 3435,
         "cohort_size": 41509,
         "cohorts_observed": 9,
-        "retention_rate": 0.0829458671613385
+        "retention_rate": 0.08275313787371413
       },
       {
         "weeks_since_first": 5,
-        "active_users": 3003,
+        "active_users": 3035,
         "cohort_size": 36111,
         "cohorts_observed": 8,
-        "retention_rate": 0.08316025587771039
+        "retention_rate": 0.08404641245049985
       },
       {
         "weeks_since_first": 6,
-        "active_users": 2032,
+        "active_users": 2142,
         "cohort_size": 30658,
         "cohorts_observed": 7,
-        "retention_rate": 0.0662796007567356
+        "retention_rate": 0.06986757127014157
       },
       {
         "weeks_since_first": 7,
-        "active_users": 156,
+        "active_users": 138,
         "cohort_size": 25279,
         "cohorts_observed": 6,
-        "retention_rate": 0.006171130187111832
+        "retention_rate": 0.0054590767039835435
+      },
+      {
+        "weeks_since_first": 8,
+        "active_users": 0,
+        "cohort_size": 19961,
+        "cohorts_observed": 5,
+        "retention_rate": 0.0
+      },
+      {
+        "weeks_since_first": 9,
+        "active_users": 0,
+        "cohort_size": 14542,
+        "cohorts_observed": 4,
+        "retention_rate": 0.0
+      },
+      {
+        "weeks_since_first": 10,
+        "active_users": 0,
+        "cohort_size": 9091,
+        "cohorts_observed": 3,
+        "retention_rate": 0.0
+      },
+      {
+        "weeks_since_first": 11,
+        "active_users": 0,
+        "cohort_size": 4272,
+        "cohorts_observed": 2,
+        "retention_rate": 0.0
+      },
+      {
+        "weeks_since_first": 12,
+        "active_users": 0,
+        "cohort_size": 1226,
+        "cohorts_observed": 1,
+        "retention_rate": 0.0
       }
     ],
     "censoring": {
-      "cells_total": 78,
-      "cells_censored": 2,
-      "share_censored": 0.02564102564102564,
+      "cells_total": 169,
+      "cells_censored": 78,
+      "share_censored": 0.46153846153846156,
       "max_observable_week_by_cohort": {
-        "2020-11-01": 7,
-        "2020-11-08": 7,
-        "2020-11-15": 7,
-        "2020-11-22": 7,
-        "2020-11-29": 7,
+        "2020-11-01": 12,
+        "2020-11-08": 11,
+        "2020-11-15": 10,
+        "2020-11-22": 9,
+        "2020-11-29": 8,
         "2020-12-06": 7,
         "2020-12-13": 6,
         "2020-12-20": 5,
@@ -390,49 +488,50 @@
       "rank": 1,
       "name": "Rework the product page add-to-cart path on the weakest device",
       "rationale": "Largest absolute loss sits between viewing an item and adding one. The device split says this is a layout and interaction problem, not an intent problem.",
-      "reach": 44202.0,
+      "reach": 43868.0,
       "impact": 2.0,
       "confidence": 0.7,
       "effort": 3.0,
-      "evidence": "44,202 users lost at this step; $49,861 recoverable at +5pp (upper bound).",
+      "evidence": "43,868 users lost at this step; $48,637 recoverable at +5pp (upper bound).",
       "assumptions": "Assumes the gap is friction rather than a difference in visit intent by device. Untested \u2014 an A/B test on the mobile PDP settles it.",
-      "rice_score": 20627.6
+      "rice_score": 20471.733333333334
     },
     {
       "rank": 2,
       "name": "Reduce cart-to-checkout friction (persistent cart, single-tap checkout entry)",
       "rationale": "Users who add to cart have declared intent. Losing them before checkout even starts is the most recoverable kind of loss.",
-      "reach": 8801.0,
+      "reach": 8648.0,
       "impact": 2.0,
       "confidence": 0.6,
       "effort": 4.0,
-      "evidence": "8,801 users lost at this step; $29,641 recoverable at +5pp (upper bound).",
+      "evidence": "8,648 users lost at this step; $28,802 recoverable at +5pp (upper bound).",
       "assumptions": "Assumes abandonment is friction-driven. Price shock at the cart step would produce the same signature and needs a different fix.",
-      "rice_score": 2640.2999999999997
+      "rice_score": 2594.4
     },
     {
       "rank": 3,
       "name": "Rebalance paid spend away from the worst-converting channel: partner-a / referral",
       "rationale": "A channel with high volume and low conversion is a targeting or expectation-mismatch problem and is cheap to act on \u2014 it is a budget decision, not an engineering project.",
-      "reach": 1160.0,
+      "reach": 1143.0,
       "impact": 1.0,
       "confidence": 0.75,
       "effort": 1.5,
-      "evidence": "1,160 users from partner-a / referral converting at 1.38% vs 6.89% overall.",
+      "evidence": "1,143 users from partner-a / referral converting at 1.40% vs 6.68% overall.",
       "assumptions": "Assumes conversion, not lifetime value, is the right objective for that channel. A brand-awareness channel would be misjudged by this.",
-      "rice_score": 580.0
+      "rice_score": 571.5
     },
     {
       "rank": 4,
       "name": "Shorten the checkout form and surface total cost earlier",
       "rationale": "Checkout-stage loss is the classic form-length and unexpected-cost problem, but it is also the stage with the fewest users left.",
-      "reach": 2863.0,
+      "reach": 2814.0,
       "impact": 1.0,
       "confidence": 0.55,
       "effort": 5.0,
-      "evidence": "2,863 users lost at this step; $22,220 recoverable at +5pp (upper bound).",
+      "evidence": "2,814 users lost at this step; $21,641 recoverable at +5pp (upper bound).",
       "assumptions": "Assumes shipping cost and form length dominate. No field-level abandonment data exists in this dataset to confirm it.",
-      "rice_score": 314.93
+      "rice_score": 309.54
     }
-  ]
+  ],
+  "reexport_diff": []
 }

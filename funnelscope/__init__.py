@@ -1,10 +1,12 @@
 """FunnelScope — GA4 event-data product analysis.
 
-The analytical logic lives here, not in the notebook or the Streamlit app, so that
-the memo, the dashboard and the tests are all computing from one implementation.
+The analytical logic lives here, not in the notebook, the Streamlit app or the static
+site, so the memo, both dashboards and the tests all compute from one implementation.
+The moment two of them calculate the same rate independently they can disagree, and
+then neither is worth quoting.
 """
 
-__version__ = "1.0.0"
+__version__ = "3.0.0"
 
 FUNNEL_STAGES = ("viewed", "added_to_cart", "began_checkout", "purchased")
 

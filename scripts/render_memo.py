@@ -65,18 +65,22 @@ def build_tokens(m: dict, author: str) -> dict:
             dev_rows.append(f"| {r['segment_value']} | {r['viewed']:,} | "
                             f"{r['purchased']:,} | {pct(conv, 2)} |")
 
-    opp_rows = ["| Step | Users lost | Recovered at +5pp | P(purchase \\| next stage) | Recoverable |",
-                "|---|---:|---:|---:|---:|"]
+    intervals = {iv["to_stage"]: iv for iv in m.get("sizing_intervals", [])}
+    opp_rows = ["| Step | Users lost | Recovered at +5pp | P(purchase \\| next stage) "
+                "| Recoverable | 95% CI |",
+                "|---|---:|---:|---:|---:|---:|"]
     for o in opps:
+        iv = intervals.get(o["to_stage"])
+        ci = f"{money(iv['ci_low'])} – {money(iv['ci_high'])}" if iv else "—"
         opp_rows.append(f"| {STAGE_LABELS[o['from_stage']]} → {STAGE_LABELS[o['to_stage']]} "
                         f"| {int(o['users_lost']):,} | {o['users_recovered']:,.0f} "
                         f"| {pct(o['downstream_conversion'], 1)} "
-                        f"| {money(o['recoverable_revenue'])} |")
+                        f"| {money(o['recoverable_revenue'])} | {ci} |")
 
     sens = m["sensitivity"]
     improvements = [k for k in sens[0].keys() if k != "to_stage"]
     sens_rows = ["| Stage | " + " | ".join(f"+{float(i) * 100:.0f}pp" for i in improvements) + " |",
-                 "|---" * (len(improvements) + 1) + "|"]
+                 "|---" + "|---:" * len(improvements) + "|"]
     for r in sens:
         sens_rows.append("| " + STAGE_LABELS.get(r["to_stage"], r["to_stage"]) + " | " +
                          " | ".join(money(float(r[i])) for i in improvements) + " |")
@@ -88,17 +92,33 @@ def build_tokens(m: dict, author: str) -> dict:
                          f"{r['impact']} | {r['confidence']} | {r['effort']} | "
                          f"{r['rice_score']:,.0f} |")
     top = m["rice"][0]
+    # The top recommendation earns a paragraph; the rest are in the table and the
+    # dashboard. A memo that justifies every row is a lab notebook.
     rice_reasoning = (
-        f"**Why #{1} ranks first:** {top['rationale']} {top['evidence']} "
-        f"*Assumption to challenge:* {top['assumptions']}")
+        f"**Why #1 ranks first:** {top['rationale']} *Assumption to challenge:* "
+        f"{top['assumptions']}")
 
     # Only the two comparisons a reader would act on go in the memo prose; the rest
     # live in the dashboard. A memo that recites every test it ran is a lab notebook.
+    # The memo quotes a compact form of each verdict, not stats.verdict(): the full
+    # sentence is written for a dashboard tooltip where there is room, and two of them
+    # spend a third of the prose budget on restating the same test twice.
     sig = m["significance_tests"]
-    sig_para = " ".join(t["verdict"] for t in sig[:2]) if sig else ""
+    def _short(t: dict) -> str:
+        a, b = t["comparison"].split(" vs ")
+        direction = "lower" if t["difference_pp"] < 0 else "higher"
+        if not t["significant"]:
+            return (f"**{a}** vs **{b}** ({pct(t['rate_a'], 2)} vs {pct(t['rate_b'], 2)}) "
+                    f"is not distinguishable from noise at this sample size — "
+                    f"p = {t['p_value']:.2f}. Do not act on it.")
+        return (f"**{a}** converts {abs(t['difference_pp']):.2f}pp {direction} than "
+                f"**{b}** ({pct(t['rate_a'], 2)} vs {pct(t['rate_b'], 2)}, 95% CI "
+                f"[{t['ci_low_pp']:+.2f}, {t['ci_high_pp']:+.2f}]pp).")
+    sig_para = " ".join(_short(t) for t in sig[:2]) if sig else ""
     if len(sig) > 2:
-        sig_para += (f" ({len(sig) - 2} further segment comparisons were tested; "
-                     f"see the Opportunity page of the dashboard.)")
+        n = len(sig) - 2
+        sig_para += (f" ({n} further comparison{'s' if n != 1 else ''} "
+                     f"{'are' if n != 1 else 'is'} in the dashboard.)")
 
     src = [s for s in m["segments"]["source"] if s["segment_value"] != "(long tail)"]
     for s in src:
@@ -106,6 +126,37 @@ def build_tokens(m: dict, author: str) -> dict:
     big = sorted(src, key=lambda s: -s["viewed"])
     worst_ch = min(big[:5], key=lambda s: s["conv"]) if src else {}
     best_ch = max(src, key=lambda s: s["conv"]) if src else {}
+
+    # The multiple-comparisons sentence is generated rather than written, so the memo
+    # cannot claim "the correction changes nothing" after a re-export where it did.
+    mc = m.get("multiple_comparisons") or {}
+    if not mc:
+        correction_sentence = ""
+    elif mc.get("changed_by_correction"):
+        correction_sentence = (
+            f"**{len(mc['changed_by_correction'])} of these comparisons do not survive "
+            f"{mc['method']} correction** across the family of {mc['family_size']} tests "
+            f"({'; '.join(mc['changed_by_correction'])}) and are not treated as findings. "
+            f"Running several segment comparisons at α = {mc['alpha']} each does not hold "
+            f"the family-wise error rate at {mc['alpha']}.")
+    else:
+        correction_sentence = (
+            f"All {mc['family_size']} comparisons were {mc['method']}-corrected for "
+            f"multiple testing and the p-values are small enough that it changes none of "
+            f"the conclusions — worth stating rather than using as a reason to skip the "
+            f"correction, because a borderline result here should not be trusted "
+            f"without it.")
+
+    scope = m.get("scope_comparison")
+    if scope:
+        scope_sentence = (
+            f"**{pct(scope['return_visit_dependence'], 0)} of conversions need a return "
+            f"visit.** The same funnel scoped to the session converts at "
+            f"{pct(scope['session_conversion'], 2)} against "
+            f"{pct(scope['user_conversion'], 2)} user-level, so a single-session "
+            f"optimisation would attack the wrong surface for that share of it.")
+    else:
+        scope_sentence = ""
 
     xv = m["validation"]["cross_validation"]
     max_rel = max(float(r["rel_diff"]) for r in xv)
@@ -133,6 +184,8 @@ def build_tokens(m: dict, author: str) -> dict:
         "funnel_table": "\n".join(funnel_rows),
         "segment_table": "\n".join(dev_rows),
         "significance_paragraph": sig_para,
+        "correction_sentence": correction_sentence,
+        "scope_sentence": scope_sentence,
         "opportunity_table": "\n".join(opp_rows),
         "sensitivity_table": "\n".join(sens_rows),
         "rice_table": "\n".join(rice_rows),
@@ -195,8 +248,9 @@ def main() -> int:
     print(f"Wrote {OUTPUT.relative_to(REPO_ROOT)}  ({words} words of prose, "
           f"tables excluded)")
     if words > 800:
-        print(f"  WARNING: prose is {words - 800} words over the 800-word budget. "
-              f"A memo nobody finishes is a memo that did not land.")
+        over = words - 800
+        print(f"  WARNING: prose is {over} word{'s' if over != 1 else ''} over the "
+              f"800-word budget. A memo nobody finishes is a memo that did not land.")
     if not m["provenance"]["is_real"]:
         print("Provenance: SYNTHETIC FIXTURE — warning banner prepended.")
     return 0

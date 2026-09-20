@@ -38,6 +38,10 @@ def load_all():
         "01_event_overview", "02_funnel_overall", "03_funnel_by_device",
         "04_funnel_by_source", "05_funnel_by_visitor_type",
         "06_cohort_retention", "07_revenue_by_segment")}
+    try:  # only present once sql/09 has been exported
+        data["09_funnel_session_scoped"] = fio.load("09_funnel_session_scoped")
+    except FileNotFoundError:
+        pass
     return manifest, metrics, data
 
 
@@ -54,12 +58,30 @@ def provenance_banner(manifest) -> None:
 
 
 def funnel_chart(row: pd.Series):
+    """Horizontal bars in FUNNEL ORDER.
+
+    Altair rather than st.bar_chart because st.bar_chart sorts the index, which renders
+    the stages alphabetically — a funnel chart whose bars are not in funnel order is
+    worse than no chart, since the shape is the whole message.
+    """
+    import altair as alt
+
     df = pd.DataFrame({
         "Stage": [STAGE_LABELS[s] for s in FUNNEL_STAGES],
         "Users": [int(row[s]) for s in FUNNEL_STAGES],
     })
     df["% of viewers"] = df["Users"] / df["Users"].iloc[0]
-    st.bar_chart(df.set_index("Stage")["Users"], color=PALETTE[0], horizontal=True)
+    df["Label"] = df.apply(
+        lambda r: f"{r['Users']:,}  ({r['% of viewers']:.1%})", axis=1)
+
+    order = [STAGE_LABELS[s] for s in FUNNEL_STAGES]
+    base = alt.Chart(df).encode(
+        y=alt.Y("Stage:N", sort=order, title=None),
+        x=alt.X("Users:Q", title=None, axis=alt.Axis(format="~s")),
+    )
+    chart = (base.mark_bar(color=PALETTE[0], cornerRadius=2)
+             + base.mark_text(align="left", dx=5, fontSize=11).encode(text="Label:N"))
+    st.altair_chart(chart.properties(height=36 * len(df)), use_container_width=True)
     return df
 
 
@@ -109,6 +131,24 @@ def page_funnel(metrics, data):
         steps.style.format({"Conversion": "{:.1%}", "Users lost": "{:,}"}),
         use_container_width=True, hide_index=True)
 
+    scope = (metrics or {}).get("scope_comparison")
+    if scope:
+        st.divider()
+        st.subheader("User-scoped vs session-scoped")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("User-scoped conversion", f"{scope['user_conversion'] * 100:.2f}%",
+                  help="Does this user ever get there — the right frame for product fixes")
+        c2.metric("Session-scoped conversion", f"{scope['session_conversion'] * 100:.2f}%",
+                  help="Does this visit complete — the right frame for a landing experience")
+        c3.metric("Runs on return visits", f"{scope['return_visit_dependence'] * 100:.0f}%",
+                  help="Share of user-level conversion that needed a second session")
+        st.caption(
+            "Same cumulative funnel, different partition key. Session-scoped conversion "
+            "is necessarily no higher — a user converts if *any* of their sessions does — "
+            "so the gap measures how much of this funnel depends on people coming back. "
+            "A single-session optimisation would be attacking the wrong surface for that "
+            "share of it.")
+
     if metrics and metrics["validation"]["cross_validation"]:
         with st.expander("Correctness gate — two independent funnel implementations"):
             st.write("The funnel is computed twice: once from per-user first-occurrence "
@@ -123,7 +163,8 @@ def page_funnel(metrics, data):
 def page_retention(metrics, data):
     st.header("Retention")
     last_date = pd.to_datetime(data["01_event_overview"]["last_date"]).max()
-    coh = retention.mark_censored(data["06_cohort_retention"], last_date)
+    coh = retention.mark_censored(
+        retention.densify(data["06_cohort_retention"], last_date), last_date)
 
     st.warning(
         "Cells whose observation window extends past the end of the data are "
@@ -135,13 +176,61 @@ def page_retention(metrics, data):
     m = retention.matrix(coh)
     display = (m * 100).round(1)
     display.columns = [f"W{c}" for c in display.columns]
-    st.dataframe(display.style.format("{:.1f}%", na_rep="—")
-                 .background_gradient(cmap="Blues", axis=None),
-                 use_container_width=True)
+
+    # A censored cell must read as "not yet observable", which means a visible BLANK.
+    # Two things fight that here and both had to go:
+    #   * Styler.background_gradient paints NaN with the colormap's "bad" colour, which
+    #     is black by default — and a black block reads as a catastrophic zero, exactly
+    #     the misreading this page exists to prevent; and
+    #   * st.dataframe renders the grid itself rather than the Styler's HTML, so it
+    #     prints "None" in those cells and shows the bad colour as solid black even when
+    #     the colormap asks for transparent.
+    # Rendering the Styler's own HTML sidesteps both. The heatmap needs no sorting or
+    # selection, so nothing is lost by giving up the interactive grid.
+    observable = display.drop(columns=["W0"], errors="ignore")
+    vmax = float(observable.max().max()) if not observable.empty else 100.0
+
+    def cell(value):
+        if pd.isna(value):
+            return ("background: repeating-linear-gradient(45deg, transparent, "
+                    "transparent 4px, rgba(130,130,130,.30) 4px, "
+                    "rgba(130,130,130,.30) 5px);")
+        weight = min((value / vmax) ** 0.55, 1.0) if vmax else 0.0
+        colour = "color:#fff;font-weight:600;" if weight > 0.62 else ""
+        return f"background-color: rgba(47,95,208,{weight * 0.88:.3f});{colour}"
+
+    styled = (display.style
+              .format("{:.1f}%", na_rep="")
+              .map(cell)
+              .set_table_styles([
+                  {"selector": "", "props": [("border-collapse", "collapse"),
+                                             ("font-size", "13px"),
+                                             ("width", "100%")]},
+                  {"selector": "th", "props": [("font-size", "12px"),
+                                               ("font-weight", "600"),
+                                               ("padding", "6px 8px"),
+                                               ("text-align", "center")]},
+                  {"selector": "td", "props": [("padding", "6px 8px"),
+                                               ("text-align", "center"),
+                                               ("border", "1px solid rgba(128,128,128,.12)")]},
+                  {"selector": "th.row_heading", "props": [("text-align", "left"),
+                                                           ("font-family", "monospace"),
+                                                           ("white-space", "nowrap")]},
+              ]))
+    st.markdown(styled.to_html(), unsafe_allow_html=True)
+    st.caption("Hatched cells are right-censored — the observation window extends past "
+               "the end of the data, so the number does not exist yet. They are not "
+               "zeros, and they are excluded from every figure on this page.")
 
     st.subheader("Pooled retention curve (uncensored cells only)")
     curve = retention.average_curve(coh)
-    st.line_chart(curve.set_index("weeks_since_first")["retention_rate"], color=PALETTE[2])
+    # Week 0 is 100% by definition and carries no information, but it owns the y-axis
+    # and squashes every week that does carry information into the bottom tenth.
+    plotted = curve[curve.weeks_since_first > 0]
+    st.line_chart(plotted.set_index("weeks_since_first")["retention_rate"],
+                  color=PALETTE[2], y_label="Retention", x_label="Weeks since first seen")
+    st.caption("Week 0 is 100% for every cohort by construction and is omitted — plotted, "
+               "it owns the axis and flattens every week that carries information.")
 
     summary = retention.censoring_summary(coh)
     st.caption(f"{summary['cells_censored']} of {summary['cells_total']} cells "
@@ -186,8 +275,13 @@ def page_opportunity(metrics, data):
         return
 
     st.subheader("Sizing model")
-    st.code("recoverable = users_lost × improvement_pp × P(purchase | next stage) × AOV",
+    st.code("users_recovered = min(users_entering × improvement_pp, users_lost)\n"
+            "recoverable     = users_recovered × P(purchase | next stage) × AOV",
             language="text")
+    st.caption("The percentage-point lift applies to users **entering** the stage, "
+               "because that is the denominator of the conversion rate it changes. "
+               "The common `users_lost × pp` form is only `(1 − rate)` of this figure — "
+               "30% short at a 30% step, half at a 50% step.")
     st.error(
         "**Upper bound, not a forecast.** The model applies the purchase rate of users "
         "who completed a stage to users who did not. Recovered users almost certainly "
@@ -197,9 +291,13 @@ def page_opportunity(metrics, data):
     opp = pd.DataFrame(metrics["opportunities"])
     opp["Step"] = opp.apply(
         lambda r: f"{STAGE_LABELS[r['from_stage']]} → {STAGE_LABELS[r['to_stage']]}", axis=1)
+    intervals = {iv["to_stage"]: iv for iv in metrics.get("sizing_intervals", [])}
+    opp["95% CI"] = opp["to_stage"].map(
+        lambda s: (f"${intervals[s]['ci_low']:,.0f} – ${intervals[s]['ci_high']:,.0f}"
+                   if s in intervals else "—"))
     st.dataframe(
         opp[["Step", "users_lost", "step_conversion", "downstream_conversion",
-             "recoverable_revenue"]]
+             "recoverable_revenue", "95% CI"]]
         .rename(columns={"users_lost": "Users lost", "step_conversion": "Step conversion",
                          "downstream_conversion": "P(purchase | next stage)",
                          "recoverable_revenue": "Recoverable at +5pp"})
@@ -207,16 +305,54 @@ def page_opportunity(metrics, data):
                        "P(purchase | next stage)": "{:.1%}",
                        "Recoverable at +5pp": "${:,.0f}"}),
         use_container_width=True, hide_index=True)
+    if intervals:
+        st.caption(
+            "The intervals price sampling variation in the funnel counts only. They do "
+            "not price the improvement assumption, and they do not price the model's "
+            "load-bearing assumption that recovered users purchase like unaided "
+            "completers — which dominates the error and is not random. A tight interval "
+            "means the counts are large, not that the number is right.")
+
+    st.info(
+        "**Sizing prices the stages; it does not re-rank them.** In a strictly ordered "
+        "funnel every purchaser passed every stage, so `P(purchase | stage j) = "
+        "purchases ÷ count_j` and recoverable revenue collapses to a monotone function "
+        "of step conversion. Ranking by dollars and by worst drop-off are the same "
+        "ordering, necessarily — treating them as two findings double-counts one fact. "
+        "Effort is what re-ranks the work, which is the RICE table below.",
+        icon="📐")
 
     st.subheader("Sensitivity to the improvement assumption")
     st.caption("The ranking holds across the sweep; only the absolute figures move. "
-               "That is the defensible claim.")
-    st.dataframe(pd.DataFrame(metrics["sensitivity"]), use_container_width=True,
-                 hide_index=True)
+               "That is the defensible claim, which is why the sweep is published "
+               "instead of a single number.")
+    sens = pd.DataFrame(metrics["sensitivity"])
+    # Column keys are the raw improvement fractions ("0.01"); label them as the
+    # percentage points a reader would actually say out loud.
+    pp_cols = [c for c in sens.columns if c != "to_stage"]
+    pp_cols.sort(key=float)
+    sens = sens.set_index("to_stage").loc[
+        [o["to_stage"] for o in metrics["opportunities"]], pp_cols].reset_index()
+    sens["to_stage"] = sens["to_stage"].map(lambda s: STAGE_LABELS.get(s, s))
+    sens.columns = ["Stage"] + [f"+{float(c) * 100:.0f}pp" for c in pp_cols]
+    st.dataframe(
+        sens.style.format({c: "${:,.0f}" for c in sens.columns if c != "Stage"}),
+        use_container_width=True, hide_index=True)
 
     st.subheader("Is the segment gap real?")
-    for t in metrics["significance_tests"]:
-        (st.success if t["significant"] else st.info)(t["verdict"])
+    mc = metrics.get("multiple_comparisons")
+    if mc:
+        st.caption(
+            f"{mc['n_significant_after_correction']} of {mc['family_size']} comparisons "
+            f"survive {mc['method']} correction. Running several segment comparisons at "
+            f"α = {mc['alpha']} each does not hold the family-wise error rate at "
+            f"{mc['alpha']} — with four comparisons it is 18.5%. The corrected verdict "
+            f"is the one quoted."
+            + (f" The correction changed the conclusion for: "
+               f"{'; '.join(mc['changed_by_correction'])}."
+               if mc.get("changed_by_correction") else ""))
+    for test in metrics["significance_tests"]:
+        (st.success if test["significant"] else st.info)(test["verdict"])
 
     st.subheader("RICE-ranked recommendations")
     rice_df = pd.DataFrame(metrics["rice"])
@@ -246,8 +382,13 @@ def main():
     st.sidebar.caption("GA4 event data · BigQuery · funnel, retention and opportunity sizing")
     page = st.sidebar.radio("Page", ["Funnel", "Retention", "Acquisition", "Opportunity"])
     st.sidebar.divider()
-    st.sidebar.markdown("**The memo is the deliverable.** This dashboard supports it: "
-                        "[`docs/MEMO.md`](https://github.com/IshaanS0112/FunnelScope/blob/main/docs/MEMO.md)")
+    st.sidebar.markdown(
+        "**The memo is the deliverable.** This dashboard supports it: "
+        "[`docs/MEMO.md`](https://github.com/IshaanS0112/FunnelScope/blob/main/docs/MEMO.md)")
+    st.sidebar.caption(
+        "There is also a dependency-free static version of this dashboard in `web/`, "
+        "which opens by double-click and needs no Python. Build it with "
+        "`python scripts/build_web.py`.")
     if not manifest.is_real:
         st.sidebar.error("Synthetic fixture data", icon="⚠️")
 

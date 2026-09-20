@@ -65,3 +65,37 @@ def test_with_rates_adds_expected_columns():
 def test_zero_viewers_does_not_divide_by_zero():
     out = funnel.with_rates(make_row(0, 0, 0, 0))
     assert pd.isna(out["cum_conv_purchased"].iloc[0])
+
+
+# ---------------------------------------------------------------------------
+# User-scoped vs session-scoped
+# ---------------------------------------------------------------------------
+
+def test_session_gap_measures_dependence_on_return_visits():
+    user = pd.Series({"viewed": 10_000, "purchased": 900})
+    session = pd.Series({"viewed": 16_000, "purchased": 700})
+    gap = funnel.session_gap(user, session)
+    assert gap["user_conversion"] == pytest.approx(0.09)
+    assert gap["session_conversion"] == pytest.approx(0.04375)
+    assert gap["gap_pp"] == pytest.approx(4.625)
+    assert gap["sessions_per_viewing_user"] == pytest.approx(1.6)
+    # Just over half of user-level conversion needed a second visit.
+    assert gap["return_visit_dependence"] == pytest.approx(1 - 0.04375 / 0.09)
+
+
+def test_session_conversion_above_user_conversion_is_rejected():
+    """Arithmetically impossible: a user converts if ANY of their sessions does, so
+    collapsing sessions into users can only add conversions. If this fires, one of the
+    two funnel queries is wrong."""
+    user = pd.Series({"viewed": 1_000, "purchased": 50})
+    session = pd.Series({"viewed": 1_000, "purchased": 90})
+    with pytest.raises(funnel.FunnelValidationError, match="impossible"):
+        funnel.session_gap(user, session)
+
+
+def test_identical_scopes_report_no_return_visit_dependence():
+    """A site where every journey completes in one sitting: the two funnels coincide."""
+    row = pd.Series({"viewed": 5_000, "purchased": 250})
+    gap = funnel.session_gap(row, row)
+    assert gap["gap_pp"] == pytest.approx(0.0)
+    assert gap["return_visit_dependence"] == pytest.approx(0.0)
