@@ -63,6 +63,24 @@ STAGE_CODE = {"view_item": "V", "add_to_cart": "C", "begin_checkout": "K", "purc
 # (02) and the comparison between them would measure nothing.
 P_RETURN_BEFORE = {"add_to_cart": 0.22, "begin_checkout": 0.14, "purchase": 0.18}
 
+# TWO GA4 BEHAVIOURS THE FIRST VERSION OF THIS FIXTURE DID NOT REPRODUCE, AND SHOULD HAVE.
+#
+# Both were found by the real BigQuery export failing the cross-validation gate, which
+# is the wrong place to find them: a fixture whose users each do every step exactly once,
+# at distinct timestamps, cannot tell a correct funnel from several incorrect ones.
+#
+# 1. REPEAT EVENTS. Real users browse and cart repeatedly — 6.3 view_item events per
+#    user in the GA4 sample, and 4.67 add_to_cart events per user who carts at all.
+#    That makes "first cart after first view" and "ever carted after ever viewing" two
+#    different questions, and on the real export they differed by 17%.
+# 2. BATCHED TIMESTAMPS. GA4 stamps every event in one network request with the same
+#    `event_timestamp`. Adding to cart from a product listing sends view_item and
+#    add_to_cart together, so they tie exactly — 11.3% of carting users on the real
+#    export. Strict `>` ordering drops every one of them.
+REPEAT_VIEWS = (0, 1, 2, 3, 5, 8)      # extra view_item events, drawn per user
+P_REPEAT_CART = 0.45                    # carts again after browsing more
+P_TIED_CART = 0.12                      # cart shares view's exact microsecond
+
 MIN_USERS_PER_CHANNEL = 500   # mirrors @min_users in sql/04_funnel_by_source.sql
 
 
@@ -118,9 +136,22 @@ def simulate(rng: np.random.Generator) -> pd.DataFrame:
                 return t + int(rng.integers(1, 14)) * day_us + int(rng.integers(0, day_us))
             return t + int(rng.integers(30_000_000, 3_600_000_000))
 
+        # Extra browsing, at new timestamps, so "first" and "ever" diverge.
+        for _ in range(int(rng.choice(REPEAT_VIEWS))):
+            extra = t0 + int(rng.integers(60_000_000, 6 * day_us))
+            if extra <= window_end_us:
+                emit("view_item", extra)
         if did_cart[i]:
-            t = advance("add_to_cart", t)
+            if rng.random() < P_TIED_CART:
+                # Added straight from the listing: same request, same microsecond.
+                t = t0
+            else:
+                t = advance("add_to_cart", t)
             emit("add_to_cart", t)
+            if rng.random() < P_REPEAT_CART:
+                again = t + int(rng.integers(60_000_000, 3 * day_us))
+                if again <= window_end_us:
+                    emit("add_to_cart", again)
         if did_checkout[i]:
             t = advance("begin_checkout", t)
             emit("begin_checkout", t)
@@ -174,11 +205,29 @@ def funnel_by_timestamps(log: pd.DataFrame, by: str | None,
 
 
 def funnel_by_sequence(log: pd.DataFrame) -> pd.DataFrame:
-    """Method B -- collapse each user's events to an ordered string, test with regex.
-    Mirrors 02b_funnel_validation.sql. Shares no logic with method A."""
-    d = log[log.event_name.isin(STAGE_CODE)].sort_values("event_timestamp")
-    seq = (d.assign(code=d.event_name.map(STAGE_CODE))
-             .groupby("user_pseudo_id")["code"].apply("".join))
+    """Method B -- collapse each user's FIRST occurrence of each stage into an ordered
+    string and test it with a regex. Mirrors 02b_funnel_validation.sql exactly, including
+    its two non-obvious rules:
+
+      * first occurrences only, because "first cart after first view" and "ever carted
+        after ever viewing" are different questions once users repeat a step; and
+      * ties broken by stage rank DESCENDING, because method A's strict `>` does not
+        advance the funnel on an equal timestamp, and an arbitrary order would let
+        roughly half of those users through.
+
+    The funnel logic still shares nothing with method A -- that compares timestamps
+    pairwise, this sorts and pattern-matches -- so a stage predicate that is not
+    cumulative still cannot survive the comparison.
+    """
+    rank = {"V": 1, "C": 2, "K": 3, "P": 4}
+    d = log[log.event_name.isin(STAGE_CODE)].assign(
+        code=lambda x: x.event_name.map(STAGE_CODE))
+    first = (d.groupby(["user_pseudo_id", "code"], as_index=False)["event_timestamp"]
+               .min())
+    first["rank"] = first["code"].map(rank)
+    first = first.sort_values(["user_pseudo_id", "event_timestamp", "rank"],
+                              ascending=[True, True, False])
+    seq = first.groupby("user_pseudo_id")["code"].apply("".join)
     seq = seq[seq.str.contains("V")]
     return pd.DataFrame([{
         "segment_type": "all",
@@ -217,6 +266,33 @@ def fold_long_tail(df: pd.DataFrame, min_users: int = MIN_USERS_PER_CHANNEL) -> 
     agg = (d.groupby(["segment_type", "segment_value"], as_index=False)
              [["viewed", "added_to_cart", "began_checkout", "purchased"]].sum())
     return agg.sort_values("viewed", ascending=False).reset_index(drop=True)
+
+
+def timestamp_ties(log: pd.DataFrame) -> pd.DataFrame:
+    """How many users the strict ordering excludes because two events share a timestamp.
+    Mirrors 10_timestamp_ties.sql."""
+    piv = (log[log.event_name.isin(STAGE_CODE)]
+           .pivot_table(index="user_pseudo_id", columns="event_name",
+                        values="event_timestamp", aggfunc="min"))
+    for col in STAGE_CODE:
+        if col not in piv.columns:
+            piv[col] = np.nan
+    piv = piv[piv["view_item"].notna()]
+    v, c = piv["view_item"], piv["add_to_cart"]
+    k, p = piv["begin_checkout"], piv["purchase"]
+    steps = [
+        ("viewed -> added_to_cart", c > v, c == v, c >= v),
+        ("added_to_cart -> began_checkout", (c > v) & (k > c), (c > v) & (k == c),
+         (c > v) & (k >= c)),
+        ("began_checkout -> purchased", (c > v) & (k > c) & (p > k),
+         (c > v) & (k > c) & (p == k), (c > v) & (k > c) & (p >= k)),
+    ]
+    return pd.DataFrame([{
+        "step": name,
+        "counted_strict": int(strict.sum()),
+        "excluded_by_tie": int(tie.sum()),
+        "counted_at_or_after": int(loose.sum()),
+    } for name, strict, tie, loose in steps])
 
 
 def cohort_retention(log: pd.DataFrame) -> pd.DataFrame:
@@ -258,6 +334,7 @@ def main() -> int:
              .rename(columns={"visitor_type": "segment_value"}), "05_funnel_by_visitor_type")
     fio.save(cohort_retention(log), "06_cohort_retention")
     fio.save(funnel_by_sessions(log), "09_funnel_session_scoped")
+    fio.save(timestamp_ties(log), "10_timestamp_ties")
 
     rev = (log[log.event_name == "purchase"]
            .groupby(["device_category", "source_medium"])

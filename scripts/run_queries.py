@@ -58,6 +58,7 @@ OUTPUTS = {
     "07_revenue_by_segment":      "07_revenue_by_segment",
     "08_event_params_reference":  "08_event_params_sample",
     "09_funnel_session_scoped":   "09_funnel_session_scoped",
+    "10_timestamp_ties":          "10_timestamp_ties",
 }
 
 MIN_USERS_PER_CHANNEL = 500  # channels smaller than this fold into '(long tail)'

@@ -1,8 +1,8 @@
 {
-  "source": "synthetic-fixture",
-  "generated_at": "2026-09-20T10:27:00+00:00",
-  "dataset": "synthetic GA4-shaped event log (scripts/make_fixture.py)",
+  "source": "bigquery",
+  "generated_at": "2026-09-20T10:54:54+00:00",
+  "dataset": "bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*",
   "window_start": "2020-11-01",
   "window_end": "2021-01-31",
-  "note": "seed=20201101, n_users=60000. Not GA4 data. Not an analysis."
+  "note": "Exported by run_queries.py from project funnelscope-509210."
 }

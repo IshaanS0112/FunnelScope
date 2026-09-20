@@ -3,13 +3,13 @@
 // produced only after the funnel correctness gates have passed.
 window.FUNNELSCOPE_DATA = {
  "provenance": {
-  "source": "synthetic-fixture",
-  "is_real": false,
-  "banner": "[SYNTHETIC FIXTURE] THESE NUMBERS ARE FROM A SYNTHETIC FIXTURE, NOT FROM GA4. They exist so the pipeline can be executed and tested end to end without GCP credentials. They describe nothing about Google's demo store and must not be quoted as findings. Run `python scripts/run_queries.py` to replace them.",
-  "dataset": "synthetic GA4-shaped event log (scripts/make_fixture.py)",
+  "source": "bigquery",
+  "is_real": true,
+  "banner": "bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*, 2020-11-01 to 2021-01-31. Exported 2026-09-20.",
+  "dataset": "bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*",
   "window_start": "2020-11-01",
   "window_end": "2021-01-31",
-  "generated_at": "2026-09-20T10:27:00+00:00"
+  "generated_at": "2026-09-20T10:54:54+00:00"
  },
  "stage_labels": {
   "viewed": "Viewed an item",
@@ -24,199 +24,254 @@ window.FUNNELSCOPE_DATA = {
   "purchased"
  ],
  "overview": {
-  "events_total": 152287,
+  "events_total": 4295584,
   "by_event": [
    {
-    "event": "view_item",
-    "events": 59290,
-    "users": 59290
+    "event": "page_view",
+    "events": 1350428,
+    "users": 269792
    },
    {
-    "event": "first_visit",
-    "events": 42022,
-    "users": 42022
+    "event": "user_engagement",
+    "events": 1058721,
+    "users": 213004
+   },
+   {
+    "event": "scroll",
+    "events": 493072,
+    "users": 138098
+   },
+   {
+    "event": "view_item",
+    "events": 386068,
+    "users": 61252
    },
    {
     "event": "session_start",
-    "events": 24819,
-    "users": 19388
+    "events": 354970,
+    "users": 267116
+   },
+   {
+    "event": "first_visit",
+    "events": 257462,
+    "users": 257314
+   },
+   {
+    "event": "view_promotion",
+    "events": 190104,
+    "users": 102443
    },
    {
     "event": "add_to_cart",
-    "events": 15422,
-    "users": 15422
+    "events": 58543,
+    "users": 12545
    },
    {
     "event": "begin_checkout",
-    "events": 6774,
-    "users": 6774
+    "events": 38757,
+    "users": 9715
+   },
+   {
+    "event": "select_item",
+    "events": 31007,
+    "users": 13180
+   },
+   {
+    "event": "view_search_results",
+    "events": 26172,
+    "users": 14449
+   },
+   {
+    "event": "add_shipping_info",
+    "events": 19722,
+    "users": 9714
+   },
+   {
+    "event": "add_payment_info",
+    "events": 13899,
+    "users": 5751
+   },
+   {
+    "event": "select_promotion",
+    "events": 9450,
+    "users": 8164
    },
    {
     "event": "purchase",
-    "events": 3960,
-    "users": 3960
+    "events": 5692,
+    "users": 4419
+   },
+   {
+    "event": "click",
+    "events": 1446,
+    "users": 1010
+   },
+   {
+    "event": "view_item_list",
+    "events": 71,
+    "users": 44
    }
   ],
   "first_date": "2020-11-01",
-  "last_date": "2021-01-30"
+  "last_date": "2021-01-31"
  },
  "funnel": {
   "overall": [
    {
     "segment": "all",
     "counts": {
-     "viewed": 59290,
-     "added_to_cart": 15422,
-     "began_checkout": 6774,
-     "purchased": 3960
+     "viewed": 61252,
+     "added_to_cart": 11114,
+     "began_checkout": 4167,
+     "purchased": 2356
     },
-    "conversion": 0.06679035250463822,
+    "conversion": 0.03846405015346438,
     "steps": [
      {
       "from": "viewed",
       "to": "added_to_cart",
       "label": "Viewed an item → Added to cart",
-      "entered": 59290,
-      "completed": 15422,
-      "lost": 43868,
-      "step_conversion": 0.2601113172541744
+      "entered": 61252,
+      "completed": 11114,
+      "lost": 50138,
+      "step_conversion": 0.18144713642003527
      },
      {
       "from": "added_to_cart",
       "to": "began_checkout",
       "label": "Added to cart → Began checkout",
-      "entered": 15422,
-      "completed": 6774,
-      "lost": 8648,
-      "step_conversion": 0.4392426403838672
+      "entered": 11114,
+      "completed": 4167,
+      "lost": 6947,
+      "step_conversion": 0.37493251754543816
      },
      {
       "from": "began_checkout",
       "to": "purchased",
       "label": "Began checkout → Purchased",
-      "entered": 6774,
-      "completed": 3960,
-      "lost": 2814,
-      "step_conversion": 0.5845881310894597
+      "entered": 4167,
+      "completed": 2356,
+      "lost": 1811,
+      "step_conversion": 0.5653947684185265
      }
     ]
    }
   ],
   "device": [
    {
-    "segment": "mobile",
+    "segment": "desktop",
     "counts": {
-     "viewed": 31013,
-     "added_to_cart": 6523,
-     "began_checkout": 2443,
-     "purchased": 1248
+     "viewed": 35711,
+     "added_to_cart": 6442,
+     "began_checkout": 2402,
+     "purchased": 1348
     },
-    "conversion": 0.0402411891787315,
+    "conversion": 0.03774747276749461,
     "steps": [
      {
       "from": "viewed",
       "to": "added_to_cart",
       "label": "Viewed an item → Added to cart",
-      "entered": 31013,
-      "completed": 6523,
-      "lost": 24490,
-      "step_conversion": 0.21033115145261663
+      "entered": 35711,
+      "completed": 6442,
+      "lost": 29269,
+      "step_conversion": 0.18039259611884292
      },
      {
       "from": "added_to_cart",
       "to": "began_checkout",
       "label": "Added to cart → Began checkout",
-      "entered": 6523,
-      "completed": 2443,
-      "lost": 4080,
-      "step_conversion": 0.3745209259543155
+      "entered": 6442,
+      "completed": 2402,
+      "lost": 4040,
+      "step_conversion": 0.37286556969885126
      },
      {
       "from": "began_checkout",
       "to": "purchased",
       "label": "Began checkout → Purchased",
-      "entered": 2443,
-      "completed": 1248,
-      "lost": 1195,
-      "step_conversion": 0.5108473188702415
+      "entered": 2402,
+      "completed": 1348,
+      "lost": 1054,
+      "step_conversion": 0.5611990008326395
      }
     ]
    },
    {
-    "segment": "desktop",
+    "segment": "mobile",
     "counts": {
-     "viewed": 24226,
-     "added_to_cart": 7855,
-     "began_checkout": 3890,
-     "purchased": 2464
+     "viewed": 24151,
+     "added_to_cart": 4433,
+     "began_checkout": 1674,
+     "purchased": 954
     },
-    "conversion": 0.10170890778502435,
+    "conversion": 0.03950146991842988,
     "steps": [
      {
       "from": "viewed",
       "to": "added_to_cart",
       "label": "Viewed an item → Added to cart",
-      "entered": 24226,
-      "completed": 7855,
-      "lost": 16371,
-      "step_conversion": 0.32423842153058696
+      "entered": 24151,
+      "completed": 4433,
+      "lost": 19718,
+      "step_conversion": 0.18355347604654051
      },
      {
       "from": "added_to_cart",
       "to": "began_checkout",
       "label": "Added to cart → Began checkout",
-      "entered": 7855,
-      "completed": 3890,
-      "lost": 3965,
-      "step_conversion": 0.4952259707192871
+      "entered": 4433,
+      "completed": 1674,
+      "lost": 2759,
+      "step_conversion": 0.3776223776223776
      },
      {
       "from": "began_checkout",
       "to": "purchased",
       "label": "Began checkout → Purchased",
-      "entered": 3890,
-      "completed": 2464,
-      "lost": 1426,
-      "step_conversion": 0.6334190231362468
+      "entered": 1674,
+      "completed": 954,
+      "lost": 720,
+      "step_conversion": 0.5698924731182796
      }
     ]
    },
    {
     "segment": "tablet",
     "counts": {
-     "viewed": 4051,
-     "added_to_cart": 1044,
-     "began_checkout": 441,
-     "purchased": 248
+     "viewed": 1390,
+     "added_to_cart": 239,
+     "began_checkout": 91,
+     "purchased": 54
     },
-    "conversion": 0.061219451987163664,
+    "conversion": 0.03884892086330935,
     "steps": [
      {
       "from": "viewed",
       "to": "added_to_cart",
       "label": "Viewed an item → Added to cart",
-      "entered": 4051,
-      "completed": 1044,
-      "lost": 3007,
-      "step_conversion": 0.2577141446556406
+      "entered": 1390,
+      "completed": 239,
+      "lost": 1151,
+      "step_conversion": 0.17194244604316547
      },
      {
       "from": "added_to_cart",
       "to": "began_checkout",
       "label": "Added to cart → Began checkout",
-      "entered": 1044,
-      "completed": 441,
-      "lost": 603,
-      "step_conversion": 0.4224137931034483
+      "entered": 239,
+      "completed": 91,
+      "lost": 148,
+      "step_conversion": 0.3807531380753138
      },
      {
       "from": "began_checkout",
       "to": "purchased",
       "label": "Began checkout → Purchased",
-      "entered": 441,
-      "completed": 248,
-      "lost": 193,
-      "step_conversion": 0.562358276643991
+      "entered": 91,
+      "completed": 54,
+      "lost": 37,
+      "step_conversion": 0.5934065934065934
      }
     ]
    }
@@ -225,312 +280,351 @@ window.FUNNELSCOPE_DATA = {
    {
     "segment": "google / organic",
     "counts": {
-     "viewed": 20325,
-     "added_to_cart": 5399,
-     "began_checkout": 2293,
-     "purchased": 1307
+     "viewed": 20206,
+     "added_to_cart": 3496,
+     "began_checkout": 1287,
+     "purchased": 725
     },
-    "conversion": 0.0643050430504305,
+    "conversion": 0.03588043155498367,
     "steps": [
      {
       "from": "viewed",
       "to": "added_to_cart",
       "label": "Viewed an item → Added to cart",
-      "entered": 20325,
-      "completed": 5399,
-      "lost": 14926,
-      "step_conversion": 0.26563345633456337
+      "entered": 20206,
+      "completed": 3496,
+      "lost": 16710,
+      "step_conversion": 0.1730179154706523
      },
      {
       "from": "added_to_cart",
       "to": "began_checkout",
       "label": "Added to cart → Began checkout",
-      "entered": 5399,
-      "completed": 2293,
-      "lost": 3106,
-      "step_conversion": 0.42470827931098354
+      "entered": 3496,
+      "completed": 1287,
+      "lost": 2209,
+      "step_conversion": 0.3681350114416476
      },
      {
       "from": "began_checkout",
       "to": "purchased",
       "label": "Began checkout → Purchased",
-      "entered": 2293,
-      "completed": 1307,
-      "lost": 986,
-      "step_conversion": 0.569995638901003
+      "entered": 1287,
+      "completed": 725,
+      "lost": 562,
+      "step_conversion": 0.5633255633255633
      }
     ]
    },
    {
     "segment": "(direct) / (none)",
     "counts": {
-     "viewed": 15951,
-     "added_to_cart": 4948,
-     "began_checkout": 2381,
-     "purchased": 1441
+     "viewed": 14283,
+     "added_to_cart": 2664,
+     "began_checkout": 980,
+     "purchased": 545
     },
-    "conversion": 0.09033916368879694,
+    "conversion": 0.03815724987747672,
     "steps": [
      {
       "from": "viewed",
       "to": "added_to_cart",
       "label": "Viewed an item → Added to cart",
-      "entered": 15951,
-      "completed": 4948,
-      "lost": 11003,
-      "step_conversion": 0.31019998746160116
+      "entered": 14283,
+      "completed": 2664,
+      "lost": 11619,
+      "step_conversion": 0.18651543793320732
      },
      {
       "from": "added_to_cart",
       "to": "began_checkout",
       "label": "Added to cart → Began checkout",
-      "entered": 4948,
-      "completed": 2381,
-      "lost": 2567,
-      "step_conversion": 0.4812045270816491
+      "entered": 2664,
+      "completed": 980,
+      "lost": 1684,
+      "step_conversion": 0.36786786786786785
      },
      {
       "from": "began_checkout",
       "to": "purchased",
       "label": "Began checkout → Purchased",
-      "entered": 2381,
-      "completed": 1441,
-      "lost": 940,
-      "step_conversion": 0.6052078958420831
+      "entered": 980,
+      "completed": 545,
+      "lost": 435,
+      "step_conversion": 0.5561224489795918
+     }
+    ]
+   },
+   {
+    "segment": "<Other> / <Other>",
+    "counts": {
+     "viewed": 9722,
+     "added_to_cart": 1747,
+     "began_checkout": 644,
+     "purchased": 347
+    },
+    "conversion": 0.03569224439415758,
+    "steps": [
+     {
+      "from": "viewed",
+      "to": "added_to_cart",
+      "label": "Viewed an item → Added to cart",
+      "entered": 9722,
+      "completed": 1747,
+      "lost": 7975,
+      "step_conversion": 0.1796955358979634
+     },
+     {
+      "from": "added_to_cart",
+      "to": "began_checkout",
+      "label": "Added to cart → Began checkout",
+      "entered": 1747,
+      "completed": 644,
+      "lost": 1103,
+      "step_conversion": 0.3686319404693761
+     },
+     {
+      "from": "began_checkout",
+      "to": "purchased",
+      "label": "Began checkout → Purchased",
+      "entered": 644,
+      "completed": 347,
+      "lost": 297,
+      "step_conversion": 0.5388198757763976
+     }
+    ]
+   },
+   {
+    "segment": "<Other> / referral",
+    "counts": {
+     "viewed": 5815,
+     "added_to_cart": 1068,
+     "began_checkout": 413,
+     "purchased": 234
+    },
+    "conversion": 0.04024075666380052,
+    "steps": [
+     {
+      "from": "viewed",
+      "to": "added_to_cart",
+      "label": "Viewed an item → Added to cart",
+      "entered": 5815,
+      "completed": 1068,
+      "lost": 4747,
+      "step_conversion": 0.1836629406706793
+     },
+     {
+      "from": "added_to_cart",
+      "to": "began_checkout",
+      "label": "Added to cart → Began checkout",
+      "entered": 1068,
+      "completed": 413,
+      "lost": 655,
+      "step_conversion": 0.38670411985018727
+     },
+     {
+      "from": "began_checkout",
+      "to": "purchased",
+      "label": "Began checkout → Purchased",
+      "entered": 413,
+      "completed": 234,
+      "lost": 179,
+      "step_conversion": 0.5665859564164649
+     }
+    ]
+   },
+   {
+    "segment": "shop.googlemerchandisestore.com / referral",
+    "counts": {
+     "viewed": 4189,
+     "added_to_cart": 806,
+     "began_checkout": 332,
+     "purchased": 199
+    },
+    "conversion": 0.04750537121031272,
+    "steps": [
+     {
+      "from": "viewed",
+      "to": "added_to_cart",
+      "label": "Viewed an item → Added to cart",
+      "entered": 4189,
+      "completed": 806,
+      "lost": 3383,
+      "step_conversion": 0.1924086894246837
+     },
+     {
+      "from": "added_to_cart",
+      "to": "began_checkout",
+      "label": "Added to cart → Began checkout",
+      "entered": 806,
+      "completed": 332,
+      "lost": 474,
+      "step_conversion": 0.4119106699751861
+     },
+     {
+      "from": "began_checkout",
+      "to": "purchased",
+      "label": "Began checkout → Purchased",
+      "entered": 332,
+      "completed": 199,
+      "lost": 133,
+      "step_conversion": 0.5993975903614458
      }
     ]
    },
    {
     "segment": "google / cpc",
     "counts": {
-     "viewed": 9455,
-     "added_to_cart": 1832,
-     "began_checkout": 637,
-     "purchased": 317
-    },
-    "conversion": 0.03352723426758329,
-    "steps": [
-     {
-      "from": "viewed",
-      "to": "added_to_cart",
-      "label": "Viewed an item → Added to cart",
-      "entered": 9455,
-      "completed": 1832,
-      "lost": 7623,
-      "step_conversion": 0.19375991538868323
-     },
-     {
-      "from": "added_to_cart",
-      "to": "began_checkout",
-      "label": "Added to cart → Began checkout",
-      "entered": 1832,
-      "completed": 637,
-      "lost": 1195,
-      "step_conversion": 0.34770742358078605
-     },
-     {
-      "from": "began_checkout",
-      "to": "purchased",
-      "label": "Began checkout → Purchased",
-      "entered": 637,
-      "completed": 317,
-      "lost": 320,
-      "step_conversion": 0.4976452119309262
-     }
-    ]
-   },
-   {
-    "segment": "youtube.com / referral",
-    "counts": {
-     "viewed": 5273,
-     "added_to_cart": 755,
-     "began_checkout": 228,
+     "viewed": 2908,
+     "added_to_cart": 485,
+     "began_checkout": 186,
      "purchased": 106
     },
-    "conversion": 0.02010240849611227,
+    "conversion": 0.03645116918844567,
     "steps": [
      {
       "from": "viewed",
       "to": "added_to_cart",
       "label": "Viewed an item → Added to cart",
-      "entered": 5273,
-      "completed": 755,
-      "lost": 4518,
-      "step_conversion": 0.1431822491940072
+      "entered": 2908,
+      "completed": 485,
+      "lost": 2423,
+      "step_conversion": 0.16678129298486932
      },
      {
       "from": "added_to_cart",
       "to": "began_checkout",
       "label": "Added to cart → Began checkout",
-      "entered": 755,
-      "completed": 228,
-      "lost": 527,
-      "step_conversion": 0.3019867549668874
+      "entered": 485,
+      "completed": 186,
+      "lost": 299,
+      "step_conversion": 0.3835051546391753
      },
      {
       "from": "began_checkout",
       "to": "purchased",
       "label": "Began checkout → Purchased",
-      "entered": 228,
+      "entered": 186,
       "completed": 106,
-      "lost": 122,
-      "step_conversion": 0.4649122807017544
+      "lost": 80,
+      "step_conversion": 0.5698924731182796
      }
     ]
    },
    {
-    "segment": "shop.googlemerch / referral",
+    "segment": "(data deleted) / (data deleted)",
     "counts": {
-     "viewed": 3567,
-     "added_to_cart": 1194,
-     "began_checkout": 586,
-     "purchased": 372
+     "viewed": 2265,
+     "added_to_cart": 517,
+     "began_checkout": 207,
+     "purchased": 129
     },
-    "conversion": 0.10428931875525652,
+    "conversion": 0.05695364238410596,
     "steps": [
      {
       "from": "viewed",
       "to": "added_to_cart",
       "label": "Viewed an item → Added to cart",
-      "entered": 3567,
-      "completed": 1194,
-      "lost": 2373,
-      "step_conversion": 0.3347350714886459
+      "entered": 2265,
+      "completed": 517,
+      "lost": 1748,
+      "step_conversion": 0.2282560706401766
      },
      {
       "from": "added_to_cart",
       "to": "began_checkout",
       "label": "Added to cart → Began checkout",
-      "entered": 1194,
-      "completed": 586,
-      "lost": 608,
-      "step_conversion": 0.490787269681742
+      "entered": 517,
+      "completed": 207,
+      "lost": 310,
+      "step_conversion": 0.40038684719535783
      },
      {
       "from": "began_checkout",
       "to": "purchased",
       "label": "Began checkout → Purchased",
-      "entered": 586,
-      "completed": 372,
-      "lost": 214,
-      "step_conversion": 0.6348122866894198
+      "entered": 207,
+      "completed": 129,
+      "lost": 78,
+      "step_conversion": 0.6231884057971014
      }
     ]
    },
    {
-    "segment": "newsletter / email",
+    "segment": "<Other> / organic",
     "counts": {
-     "viewed": 2956,
-     "added_to_cart": 1017,
-     "began_checkout": 551,
-     "purchased": 380
+     "viewed": 1826,
+     "added_to_cart": 322,
+     "began_checkout": 115,
+     "purchased": 69
     },
-    "conversion": 0.12855209742895804,
+    "conversion": 0.03778751369112815,
     "steps": [
      {
       "from": "viewed",
       "to": "added_to_cart",
       "label": "Viewed an item → Added to cart",
-      "entered": 2956,
-      "completed": 1017,
-      "lost": 1939,
-      "step_conversion": 0.3440460081190798
+      "entered": 1826,
+      "completed": 322,
+      "lost": 1504,
+      "step_conversion": 0.17634173055859803
      },
      {
       "from": "added_to_cart",
       "to": "began_checkout",
       "label": "Added to cart → Began checkout",
-      "entered": 1017,
-      "completed": 551,
-      "lost": 466,
-      "step_conversion": 0.5417895771878073
+      "entered": 322,
+      "completed": 115,
+      "lost": 207,
+      "step_conversion": 0.35714285714285715
      },
      {
       "from": "began_checkout",
       "to": "purchased",
       "label": "Began checkout → Purchased",
-      "entered": 551,
-      "completed": 380,
-      "lost": 171,
-      "step_conversion": 0.6896551724137931
+      "entered": 115,
+      "completed": 69,
+      "lost": 46,
+      "step_conversion": 0.6
      }
     ]
    },
    {
-    "segment": "partner-a / referral",
+    "segment": "(long tail)",
     "counts": {
-     "viewed": 1143,
-     "added_to_cart": 152,
-     "began_checkout": 55,
-     "purchased": 16
+     "viewed": 38,
+     "added_to_cart": 9,
+     "began_checkout": 3,
+     "purchased": 2
     },
-    "conversion": 0.01399825021872266,
+    "conversion": 0.05263157894736842,
     "steps": [
      {
       "from": "viewed",
       "to": "added_to_cart",
       "label": "Viewed an item → Added to cart",
-      "entered": 1143,
-      "completed": 152,
-      "lost": 991,
-      "step_conversion": 0.13298337707786526
+      "entered": 38,
+      "completed": 9,
+      "lost": 29,
+      "step_conversion": 0.23684210526315788
      },
      {
       "from": "added_to_cart",
       "to": "began_checkout",
       "label": "Added to cart → Began checkout",
-      "entered": 152,
-      "completed": 55,
-      "lost": 97,
-      "step_conversion": 0.3618421052631579
+      "entered": 9,
+      "completed": 3,
+      "lost": 6,
+      "step_conversion": 0.3333333333333333
      },
      {
       "from": "began_checkout",
       "to": "purchased",
       "label": "Began checkout → Purchased",
-      "entered": 55,
-      "completed": 16,
-      "lost": 39,
-      "step_conversion": 0.2909090909090909
-     }
-    ]
-   },
-   {
-    "segment": "partner-b / referral",
-    "counts": {
-     "viewed": 620,
-     "added_to_cart": 125,
-     "began_checkout": 43,
-     "purchased": 21
-    },
-    "conversion": 0.03387096774193549,
-    "steps": [
-     {
-      "from": "viewed",
-      "to": "added_to_cart",
-      "label": "Viewed an item → Added to cart",
-      "entered": 620,
-      "completed": 125,
-      "lost": 495,
-      "step_conversion": 0.20161290322580644
-     },
-     {
-      "from": "added_to_cart",
-      "to": "began_checkout",
-      "label": "Added to cart → Began checkout",
-      "entered": 125,
-      "completed": 43,
-      "lost": 82,
-      "step_conversion": 0.344
-     },
-     {
-      "from": "began_checkout",
-      "to": "purchased",
-      "label": "Began checkout → Purchased",
-      "entered": 43,
-      "completed": 21,
-      "lost": 22,
-      "step_conversion": 0.4883720930232558
+      "entered": 3,
+      "completed": 2,
+      "lost": 1,
+      "step_conversion": 0.6666666666666666
      }
     ]
    }
@@ -539,78 +633,78 @@ window.FUNNELSCOPE_DATA = {
    {
     "segment": "new",
     "counts": {
-     "viewed": 42022,
-     "added_to_cart": 9069,
-     "began_checkout": 3416,
-     "purchased": 1762
+     "viewed": 55767,
+     "added_to_cart": 9955,
+     "began_checkout": 3671,
+     "purchased": 2005
     },
-    "conversion": 0.04193041740040931,
+    "conversion": 0.03595316226442161,
     "steps": [
      {
       "from": "viewed",
       "to": "added_to_cart",
       "label": "Viewed an item → Added to cart",
-      "entered": 42022,
-      "completed": 9069,
-      "lost": 32953,
-      "step_conversion": 0.21581552520108516
+      "entered": 55767,
+      "completed": 9955,
+      "lost": 45812,
+      "step_conversion": 0.17851058869941006
      },
      {
       "from": "added_to_cart",
       "to": "began_checkout",
       "label": "Added to cart → Began checkout",
-      "entered": 9069,
-      "completed": 3416,
-      "lost": 5653,
-      "step_conversion": 0.37666776932407103
+      "entered": 9955,
+      "completed": 3671,
+      "lost": 6284,
+      "step_conversion": 0.3687594173782019
      },
      {
       "from": "began_checkout",
       "to": "purchased",
       "label": "Began checkout → Purchased",
-      "entered": 3416,
-      "completed": 1762,
-      "lost": 1654,
-      "step_conversion": 0.515807962529274
+      "entered": 3671,
+      "completed": 2005,
+      "lost": 1666,
+      "step_conversion": 0.5461727049850177
      }
     ]
    },
    {
     "segment": "returning",
     "counts": {
-     "viewed": 17268,
-     "added_to_cart": 6353,
-     "began_checkout": 3358,
-     "purchased": 2198
+     "viewed": 5485,
+     "added_to_cart": 1159,
+     "began_checkout": 496,
+     "purchased": 351
     },
-    "conversion": 0.12728746814917766,
+    "conversion": 0.06399270738377393,
     "steps": [
      {
       "from": "viewed",
       "to": "added_to_cart",
       "label": "Viewed an item → Added to cart",
-      "entered": 17268,
-      "completed": 6353,
-      "lost": 10915,
-      "step_conversion": 0.3679059532082465
+      "entered": 5485,
+      "completed": 1159,
+      "lost": 4326,
+      "step_conversion": 0.21130355515041022
      },
      {
       "from": "added_to_cart",
       "to": "began_checkout",
       "label": "Added to cart → Began checkout",
-      "entered": 6353,
-      "completed": 3358,
-      "lost": 2995,
-      "step_conversion": 0.5285691799150007
+      "entered": 1159,
+      "completed": 496,
+      "lost": 663,
+      "step_conversion": 0.42795513373597927
      },
      {
       "from": "began_checkout",
       "to": "purchased",
       "label": "Began checkout → Purchased",
-      "entered": 3358,
-      "completed": 2198,
-      "lost": 1160,
-      "step_conversion": 0.6545562835020846
+      "entered": 496,
+      "completed": 351,
+      "lost": 145,
+      "step_conversion": 0.7076612903225806
      }
     ]
    }
@@ -621,98 +715,125 @@ window.FUNNELSCOPE_DATA = {
   "cross_validation": [
    {
     "stage": "viewed",
-    "method_a_timestamps": 59290,
-    "method_b_sequence": 59290,
+    "method_a_timestamps": 61252,
+    "method_b_sequence": 61252,
     "abs_diff": 0,
     "rel_diff": 0.0,
     "within_tolerance": true
    },
    {
     "stage": "added_to_cart",
-    "method_a_timestamps": 15422,
-    "method_b_sequence": 15422,
+    "method_a_timestamps": 11114,
+    "method_b_sequence": 11114,
     "abs_diff": 0,
     "rel_diff": 0.0,
     "within_tolerance": true
    },
    {
     "stage": "began_checkout",
-    "method_a_timestamps": 6774,
-    "method_b_sequence": 6774,
+    "method_a_timestamps": 4167,
+    "method_b_sequence": 4167,
     "abs_diff": 0,
     "rel_diff": 0.0,
     "within_tolerance": true
    },
    {
     "stage": "purchased",
-    "method_a_timestamps": 3960,
-    "method_b_sequence": 3960,
+    "method_a_timestamps": 2356,
+    "method_b_sequence": 2356,
     "abs_diff": 0,
     "rel_diff": 0.0,
     "within_tolerance": true
    }
-  ]
+  ],
+  "timestamp_ties": {
+   "rows": [
+    {
+     "step": "viewed -> added_to_cart",
+     "counted_strict": 11114,
+     "excluded_by_tie": 1422,
+     "counted_at_or_after": 12536
+    },
+    {
+     "step": "added_to_cart -> began_checkout",
+     "counted_strict": 4167,
+     "excluded_by_tie": 0,
+     "counted_at_or_after": 4167
+    },
+    {
+     "step": "began_checkout -> purchased",
+     "counted_strict": 2356,
+     "excluded_by_tie": 0,
+     "counted_at_or_after": 2356
+    }
+   ],
+   "headline_step": "viewed -> added_to_cart",
+   "counted_strict": 11114,
+   "excluded_by_tie": 1422,
+   "counted_at_or_after": 12536,
+   "share_of_counted": 0.12794673384919922
+  }
  },
  "scope_comparison": {
-  "user_conversion": 0.06679035250463822,
-  "session_conversion": 0.038438185191431946,
-  "gap_pp": 2.835216731320627,
-  "session_share_of_user_conversion": 0.5755050505050505,
-  "return_visit_dependence": 0.4244949494949495,
-  "sessions_per_viewing_user": 1.0
+  "user_conversion": 0.03846405015346438,
+  "session_conversion": 0.030031160737470787,
+  "gap_pp": 0.8432889415993593,
+  "session_share_of_user_conversion": 0.7807591924836844,
+  "return_visit_dependence": 0.21924080751631558,
+  "sessions_per_viewing_user": 1.257428328870894
  },
- "aov": 63.89430303030303,
+ "aov": 63.62702037947997,
  "opportunities": [
   {
    "from_stage": "viewed",
    "to_stage": "added_to_cart",
-   "users_entering": 59290,
-   "users_completing": 15422,
-   "users_lost": 43868,
-   "step_conversion": 0.2601113172541744,
-   "downstream_conversion": 0.25677603423680456,
-   "aov": 63.89430303030303,
+   "users_entering": 61252,
+   "users_completing": 11114,
+   "users_lost": 50138,
+   "step_conversion": 0.18144713642003527,
+   "downstream_conversion": 0.21198488393017814,
+   "aov": 63.62702037947997,
    "improvement_pp": 0.05,
    "basis": "entering",
-   "users_recovered": 2964.5,
-   "recoverable_revenue": 48637.14556348074
+   "users_recovered": 3062.6000000000004,
+   "recoverable_revenue": 41308.24629467737
   },
   {
    "from_stage": "added_to_cart",
    "to_stage": "began_checkout",
-   "users_entering": 15422,
-   "users_completing": 6774,
-   "users_lost": 8648,
-   "step_conversion": 0.4392426403838672,
-   "downstream_conversion": 0.5845881310894597,
-   "aov": 63.89430303030303,
+   "users_entering": 11114,
+   "users_completing": 4167,
+   "users_lost": 6947,
+   "step_conversion": 0.37493251754543816,
+   "downstream_conversion": 0.5653947684185265,
+   "aov": 63.62702037947997,
    "improvement_pp": 0.05,
    "basis": "entering",
-   "users_recovered": 771.1,
-   "recoverable_revenue": 28802.012457041634
+   "users_recovered": 555.7,
+   "recoverable_revenue": 19990.96544031924
   },
   {
    "from_stage": "began_checkout",
    "to_stage": "purchased",
-   "users_entering": 6774,
-   "users_completing": 3960,
-   "users_lost": 2814,
-   "step_conversion": 0.5845881310894597,
+   "users_entering": 4167,
+   "users_completing": 2356,
+   "users_lost": 1811,
+   "step_conversion": 0.5653947684185265,
    "downstream_conversion": 1.0,
-   "aov": 63.89430303030303,
+   "aov": 63.62702037947997,
    "improvement_pp": 0.05,
    "basis": "entering",
-   "users_recovered": 338.70000000000005,
-   "recoverable_revenue": 21641.00043636364
+   "users_recovered": 208.35000000000002,
+   "recoverable_revenue": 13256.689696064654
   }
  ],
  "sizing_intervals": [
   {
    "from_stage": "viewed",
    "to_stage": "added_to_cart",
-   "recoverable_revenue": 48637.14556348074,
-   "ci_low": 47319.573836353826,
-   "ci_high": 49977.73264943408,
+   "recoverable_revenue": 41308.24629467737,
+   "ci_low": 39828.95491359697,
+   "ci_high": 42827.72167365821,
    "confidence": 0.95,
    "n_resamples": 2000,
    "covers": "sampling variation in the funnel counts only"
@@ -720,9 +841,9 @@ window.FUNNELSCOPE_DATA = {
   {
    "from_stage": "added_to_cart",
    "to_stage": "began_checkout",
-   "recoverable_revenue": 28802.012457041634,
-   "ci_low": 28057.965223886284,
-   "ci_high": 29521.840690361885,
+   "recoverable_revenue": 19990.96544031924,
+   "ci_low": 19353.538121112295,
+   "ci_high": 20651.018727475926,
    "confidence": 0.95,
    "n_resamples": 2000,
    "covers": "sampling variation in the funnel counts only"
@@ -730,9 +851,9 @@ window.FUNNELSCOPE_DATA = {
   {
    "from_stage": "began_checkout",
    "to_stage": "purchased",
-   "recoverable_revenue": 21641.00043636364,
-   "ci_low": 21155.403733333333,
-   "ci_high": 22142.570715151516,
+   "recoverable_revenue": 13256.689696064654,
+   "ci_low": 12865.303986955378,
+   "ci_high": 13644.894054154955,
    "confidence": 0.95,
    "n_resamples": 2000,
    "covers": "sampling variation in the funnel counts only"
@@ -741,74 +862,74 @@ window.FUNNELSCOPE_DATA = {
  "sensitivity": [
   {
    "to_stage": "added_to_cart",
-   "0.01": 9727.429112696149,
-   "0.02": 19454.858225392298,
-   "0.05": 48637.14556348074,
-   "0.1": 97274.29112696149
+   "0.01": 8261.649258935473,
+   "0.02": 16523.298517870946,
+   "0.05": 41308.24629467737,
+   "0.1": 82616.49258935473
   },
   {
    "to_stage": "began_checkout",
-   "0.01": 5760.402491408327,
-   "0.02": 11520.804982816653,
-   "0.05": 28802.012457041634,
-   "0.1": 57604.02491408327
+   "0.01": 3998.193088063848,
+   "0.02": 7996.386176127696,
+   "0.05": 19990.96544031924,
+   "0.1": 39981.93088063848
   },
   {
    "to_stage": "purchased",
-   "0.01": 4328.200087272727,
-   "0.02": 8656.400174545453,
-   "0.05": 21641.00043636364,
-   "0.1": 43282.00087272728
+   "0.01": 2651.3379392129305,
+   "0.02": 5302.675878425861,
+   "0.05": 13256.689696064654,
+   "0.1": 26513.379392129307
   }
  ],
  "sizing_ranking_equals_step_conversion": true,
  "significance_tests": [
   {
-   "comparison": "mobile vs desktop",
-   "rate_a": 0.0402411891787315,
-   "rate_b": 0.10170890778502435,
-   "difference_pp": -6.146771860629285,
-   "z": -28.63263596942142,
-   "p_value": 2.637524668217956e-180,
-   "ci_low_pp": -6.585763195472376,
-   "ci_high_pp": -5.7077805257861955,
-   "significant": true,
-   "verdict": "mobile converts 6.15pp lower than desktop (4.02% vs 10.17%). z = -28.63, p = 2.64e-180, 95% CI [-6.59, -5.71]pp. Real, not sampling noise. Holds after Holm correction across 3 comparisons (adjusted p = 5.28e-180).",
-   "p_value_adjusted": 5.275049336435912e-180,
-   "significant_raw": true,
-   "significant_holm": true,
+   "comparison": "desktop vs mobile",
+   "rate_a": 0.03774747276749461,
+   "rate_b": 0.03950146991842988,
+   "difference_pp": -0.17539971509352714,
+   "z": -1.0948635749232125,
+   "p_value": 0.27357640902512054,
+   "ci_low_pp": -0.4907116641751858,
+   "ci_high_pp": 0.1399122339881315,
+   "significant": false,
+   "verdict": "desktop vs mobile: 3.77% vs 3.95% (difference -0.18pp). z = -1.09, p = 0.274, 95% CI [-0.49, +0.14]pp. Not distinguishable from noise at this sample size — do not act on it.",
+   "p_value_adjusted": 0.27357640902512054,
+   "significant_raw": false,
+   "significant_holm": false,
    "family_size": 3,
    "correction": "Holm-Bonferroni"
   },
   {
    "comparison": "new vs returning",
-   "rate_a": 0.04193041740040931,
-   "rate_b": 0.12728746814917766,
-   "difference_pp": -8.535705074876834,
-   "z": -37.82348810602893,
-   "p_value": 4.67200553743e-313,
-   "ci_low_pp": -9.06847651821408,
-   "ci_high_pp": -8.002933631539587,
+   "rate_a": 0.03595316226442161,
+   "rate_b": 0.06399270738377393,
+   "difference_pp": -2.803954511935231,
+   "z": -10.303327743046244,
+   "p_value": 6.806513706255698e-25,
+   "ci_low_pp": -3.4698171041985493,
+   "ci_high_pp": -2.1380919196719135,
    "significant": true,
-   "verdict": "new converts 8.54pp lower than returning (4.19% vs 12.73%). z = -37.82, p = 4.67e-313, 95% CI [-9.07, -8.00]pp. Real, not sampling noise. Holds after Holm correction across 3 comparisons (adjusted p = 1.40e-312).",
-   "p_value_adjusted": 1.40160166123e-312,
+   "verdict": "new converts 2.80pp lower than returning (3.60% vs 6.40%). z = -10.30, p = 6.81e-25, 95% CI [-3.47, -2.14]pp. Real, not sampling noise. Holds after Holm correction across 3 comparisons (adjusted p = 2.04e-24).",
+   "p_value_adjusted": 2.0419541118767095e-24,
    "significant_raw": true,
    "significant_holm": true,
    "family_size": 3,
    "correction": "Holm-Bonferroni"
   },
   {
-   "comparison": "newsletter / email vs partner-a / referral",
-   "rate_a": 0.12855209742895804,
-   "rate_b": 0.01399825021872266,
-   "difference_pp": 11.455384721023538,
-   "z": 11.132674711068832,
-   "p_value": 8.698553584195184e-29,
-   "ci_low_pp": 10.069848317663018,
-   "ci_high_pp": 12.840921124384058,
+   "comparison": "(data deleted) / (data deleted) vs <Other> / <Other>",
+   "rate_a": 0.05695364238410596,
+   "rate_b": 0.03569224439415758,
+   "difference_pp": 2.126139798994838,
+   "z": 4.666582821103029,
+   "p_value": 3.062502353201e-06,
+   "ci_low_pp": 1.1029477134724681,
+   "ci_high_pp": 3.1493318845172085,
    "significant": true,
-   "verdict": "newsletter / email converts 11.46pp higher than partner-a / referral (12.86% vs 1.40%). z = 11.13, p = 8.70e-29, 95% CI [+10.07, +12.84]pp. Real, not sampling noise. Holds after Holm correction across 3 comparisons (adjusted p = 8.70e-29).",
-   "p_value_adjusted": 8.698553584195184e-29,
+   "verdict": "(data deleted) / (data deleted) converts 2.13pp higher than <Other> / <Other> (5.70% vs 3.57%). z = 4.67, p = 3.06e-06, 95% CI [+1.10, +3.15]pp. Real, not sampling noise. Holds after Holm correction across 3 comparisons (adjusted p = 6.13e-06).",
+   "p_value_adjusted": 6.125004706402e-06,
    "significant_raw": true,
    "significant_holm": true,
    "family_size": 3,
@@ -819,18 +940,22 @@ window.FUNNELSCOPE_DATA = {
   "method": "Holm-Bonferroni",
   "alpha": 0.05,
   "family_size": 3,
-  "n_significant_raw": 3,
-  "n_significant_after_correction": 3,
+  "n_significant_raw": 2,
+  "n_significant_after_correction": 2,
   "changed_by_correction": []
  },
  "segment_gap": {
-  "segment_a": "mobile",
-  "segment_b": "desktop",
-  "conversion_a": 0.0402411891787315,
-  "conversion_b": 0.10170890778502435,
-  "gap_pp": 6.146771860629285,
-  "additional_purchases_if_closed": 1906.2983571369602,
-  "value_if_closed": 121801.60489707776
+  "segment_a": "new",
+  "segment_b": "returning",
+  "conversion_a": 0.03595316226442161,
+  "conversion_b": 0.06399270738377393,
+  "gap_pp": 2.803954511935231,
+  "additional_purchases_if_closed": 1563.6813126709203,
+  "value_if_closed": 99492.38274832464,
+  "segment_type": "visitor type",
+  "significant": true,
+  "p_value": 6.806513706255698e-25,
+  "p_value_adjusted": 2.0419541118767095e-24
  },
  "retention": {
   "weeks": [
@@ -846,80 +971,85 @@ window.FUNNELSCOPE_DATA = {
    9,
    10,
    11,
-   12
+   12,
+   13
   ],
   "cohorts": [
    {
     "cohort": "2020-11-01",
-    "cohort_size": 1226,
+    "cohort_size": 20078,
     "values": [
      1.0,
-     0.1231647634584013,
-     0.10848287112561175,
-     0.07177814029363784,
-     0.08075040783034258,
-     0.09135399673735727,
-     0.07585644371941272,
-     0.008156606851549755,
-     0.0,
-     0.0,
-     0.0,
-     0.0,
-     0.0
+     0.06310389481024006,
+     0.03451538997908158,
+     0.022562008168144236,
+     0.022661619683235382,
+     0.019175216655045322,
+     0.012650662416575356,
+     0.0059268851479231,
+     0.0036856260583723478,
+     0.0064249427233788224,
+     0.005179798784739516,
+     0.004084072118736926,
+     0.004084072118736926,
+     null
     ]
    },
    {
     "cohort": "2020-11-08",
-    "cohort_size": 3046,
+    "cohort_size": 16232,
     "values": [
      1.0,
-     0.12508207485226527,
-     0.10242941562705186,
-     0.08699934340118187,
-     0.08108995403808274,
-     0.08338804990151018,
-     0.06434668417596848,
-     0.004924491135915955,
-     0.0,
-     0.0,
-     0.0,
-     0.0,
+     0.06579595860029572,
+     0.03234351897486447,
+     0.02630606209955643,
+     0.02488910793494332,
+     0.01583292262198127,
+     0.007762444553967472,
+     0.004558896007885658,
+     0.0059758501724987674,
+     0.0054829965500246425,
+     0.005544603252833909,
+     0.004374075899457861,
+     null,
      null
     ]
    },
    {
     "cohort": "2020-11-15",
-    "cohort_size": 4819,
+    "cohort_size": 17845,
     "values": [
      1.0,
-     0.1168292176800166,
-     0.10105831085287403,
-     0.08632496368541191,
-     0.08258974891056235,
-     0.0834197966383067,
-     0.07449678356505499,
-     0.005187798298402158,
-     0.0,
-     0.0,
-     0.0,
+     0.058335668254413,
+     0.033510787335388065,
+     0.024376576071728776,
+     0.018044270103670497,
+     0.007845334827682824,
+     0.004090781731577473,
+     0.005155505743905856,
+     0.0047632390025217144,
+     0.004146819837489493,
+     0.003866629307929392,
+     null,
      null,
      null
     ]
    },
    {
     "cohort": "2020-11-22",
-    "cohort_size": 5451,
+    "cohort_size": 19637,
     "values": [
      1.0,
-     0.11997798569069895,
-     0.10566868464501926,
-     0.08695652173913043,
-     0.08237020730141259,
-     0.08181984956888644,
-     0.0695285268758026,
-     0.004402861860209136,
-     0.0,
-     0.0,
+     0.0535723379334929,
+     0.02658247186433773,
+     0.01736517798034323,
+     0.007842338442735653,
+     0.00468503335540052,
+     0.005703518867444111,
+     0.00463410907979834,
+     0.003921169221367826,
+     0.004735957631002699,
+     null,
      null,
      null,
      null
@@ -927,17 +1057,18 @@ window.FUNNELSCOPE_DATA = {
    },
    {
     "cohort": "2020-11-29",
-    "cohort_size": 5419,
+    "cohort_size": 21991,
     "values": [
      1.0,
-     0.12216276065694778,
-     0.10407824321830596,
-     0.08894630005536076,
-     0.08654733345635726,
-     0.08636279756412622,
-     0.0658793135264809,
-     0.004982469090238051,
-     0.0,
+     0.055067982356418535,
+     0.02287299349733982,
+     0.008412532399618025,
+     0.006411713882952117,
+     0.00645718703105816,
+     0.005866036105679596,
+     0.0037742712928016007,
+     0.004729207403028512,
+     null,
      null,
      null,
      null,
@@ -946,16 +1077,17 @@ window.FUNNELSCOPE_DATA = {
    },
    {
     "cohort": "2020-12-06",
-    "cohort_size": 5318,
+    "cohort_size": 28069,
     "values": [
      1.0,
-     0.12373072583678074,
-     0.11037984204588192,
-     0.08386611508085746,
-     0.07935314027830011,
-     0.08104550582925912,
-     0.07239563745769086,
-     0.0069575028206092515,
+     0.03548398589190922,
+     0.010545441590366597,
+     0.006697780469557163,
+     0.010794827033382023,
+     0.006377142042823043,
+     0.004275179023121593,
+     0.0038476611208094337,
+     null,
      null,
      null,
      null,
@@ -965,15 +1097,16 @@ window.FUNNELSCOPE_DATA = {
    },
    {
     "cohort": "2020-12-13",
-    "cohort_size": 5379,
+    "cohort_size": 25153,
     "values": [
      1.0,
-     0.12046848856664807,
-     0.09908905000929541,
-     0.0851459379066741,
-     0.07603643799962818,
-     0.08272913180888641,
-     0.06934374419036995,
+     0.0291018963940683,
+     0.009263308551663817,
+     0.012086033475132192,
+     0.009024768417286208,
+     0.005526179779747942,
+     0.005168369578181529,
+     null,
      null,
      null,
      null,
@@ -984,14 +1117,15 @@ window.FUNNELSCOPE_DATA = {
    },
    {
     "cohort": "2020-12-20",
-    "cohort_size": 5453,
+    "cohort_size": 17830,
     "values": [
      1.0,
-     0.12103429304969741,
-     0.10984779020722538,
-     0.07995598752980011,
-     0.08747478452228132,
-     0.08747478452228132,
+     0.025294447560291644,
+     0.012226584408300618,
+     0.009646662927650028,
+     0.0060011217049915876,
+     0.004038137969713965,
+     null,
      null,
      null,
      null,
@@ -1003,13 +1137,14 @@ window.FUNNELSCOPE_DATA = {
    },
    {
     "cohort": "2020-12-27",
-    "cohort_size": 5398,
+    "cohort_size": 16539,
     "values": [
      1.0,
-     0.12245276028158578,
-     0.1011485735457577,
-     0.08836606150426084,
-     0.0861430159318266,
+     0.02551544833424028,
+     0.009311324747566359,
+     0.005623072737166697,
+     0.005260293850897877,
+     null,
      null,
      null,
      null,
@@ -1022,12 +1157,13 @@ window.FUNNELSCOPE_DATA = {
    },
    {
     "cohort": "2021-01-03",
-    "cohort_size": 5276,
+    "cohort_size": 22774,
     "values": [
      1.0,
-     0.11429112964366944,
-     0.10898407884761183,
-     0.08074298711144806,
+     0.03236146482831299,
+     0.012645999824361114,
+     0.007991569333450426,
+     null,
      null,
      null,
      null,
@@ -1041,11 +1177,12 @@ window.FUNNELSCOPE_DATA = {
    },
    {
     "cohort": "2021-01-10",
-    "cohort_size": 5246,
+    "cohort_size": 21452,
     "values": [
      1.0,
-     0.11799466260007625,
-     0.1038886770873046,
+     0.035334700727204925,
+     0.014497482752190937,
+     null,
      null,
      null,
      null,
@@ -1060,10 +1197,11 @@ window.FUNNELSCOPE_DATA = {
    },
    {
     "cohort": "2021-01-17",
-    "cohort_size": 4537,
+    "cohort_size": 20782,
     "values": [
      1.0,
-     0.12056424950407758,
+     0.04162255798286979,
+     null,
      null,
      null,
      null,
@@ -1079,9 +1217,30 @@ window.FUNNELSCOPE_DATA = {
    },
    {
     "cohort": "2021-01-24",
-    "cohort_size": 2722,
+    "cohort_size": 19560,
     "values": [
      1.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   {
+    "cohort": "2021-01-31",
+    "cohort_size": 2212,
+    "values": [
+     null,
+     null,
      null,
      null,
      null,
@@ -1101,86 +1260,86 @@ window.FUNNELSCOPE_DATA = {
    {
     "week": 0,
     "rate": 1.0,
-    "cohort_size": 59290,
+    "cohort_size": 267942,
     "cohorts_observed": 13
    },
    {
     "week": 1,
-    "rate": 0.12033305048790836,
-    "cohort_size": 56568,
+    "rate": 0.04267620036878679,
+    "cohort_size": 248382,
     "cohorts_observed": 12
    },
    {
     "week": 2,
-    "rate": 0.10487978320616556,
-    "cohort_size": 52031,
+    "rate": 0.01907293497363796,
+    "cohort_size": 227600,
     "cohorts_observed": 11
    },
    {
     "week": 3,
-    "rate": 0.08481350860318478,
-    "cohort_size": 46785,
+    "rate": 0.01348545705027456,
+    "cohort_size": 206148,
     "cohorts_observed": 10
    },
    {
     "week": 4,
-    "rate": 0.08275313787371413,
-    "cohort_size": 41509,
+    "rate": 0.01199733877212691,
+    "cohort_size": 183374,
     "cohorts_observed": 9
    },
    {
     "week": 5,
-    "rate": 0.08404641245049985,
-    "cohort_size": 36111,
+    "rate": 0.00842748823688075,
+    "cohort_size": 166835,
     "cohorts_observed": 8
    },
    {
     "week": 6,
-    "rate": 0.06986757127014157,
-    "cohort_size": 30658,
+    "rate": 0.006335357873896849,
+    "cohort_size": 149005,
     "cohorts_observed": 7
    },
    {
     "week": 7,
-    "rate": 0.0054590767039835435,
-    "cohort_size": 25279,
+    "rate": 0.00457804476310435,
+    "cohort_size": 123852,
     "cohorts_observed": 6
    },
    {
     "week": 8,
-    "rate": 0.0,
-    "cohort_size": 19961,
+    "rate": 0.004562396249856446,
+    "cohort_size": 95783,
     "cohorts_observed": 5
    },
    {
     "week": 9,
-    "rate": 0.0,
-    "cohort_size": 14542,
+    "rate": 0.005217367736339983,
+    "cohort_size": 73792,
     "cohorts_observed": 4
    },
    {
     "week": 10,
-    "rate": 0.0,
-    "cohort_size": 9091,
+    "rate": 0.004856430615824947,
+    "cohort_size": 54155,
     "cohorts_observed": 3
    },
    {
     "week": 11,
-    "rate": 0.0,
-    "cohort_size": 4272,
+    "rate": 0.004213715229964197,
+    "cohort_size": 36310,
     "cohorts_observed": 2
    },
    {
     "week": 12,
-    "rate": 0.0,
-    "cohort_size": 1226,
+    "rate": 0.004084072118736926,
+    "cohort_size": 20078,
     "cohorts_observed": 1
    }
   ],
   "censoring": {
-   "cells_total": 169,
-   "cells_censored": 78,
-   "share_censored": 0.46153846153846156,
+   "cells_total": 196,
+   "cells_censored": 105,
+   "share_censored": 0.5357142857142857,
    "max_observable_week_by_cohort": {
     "2020-11-01": 12,
     "2020-11-08": 11,
@@ -1197,139 +1356,234 @@ window.FUNNELSCOPE_DATA = {
     "2021-01-24": 0
    }
   },
-  "last_date": "2021-01-30"
+  "last_date": "2021-01-31"
  },
  "acquisition": [
   {
    "channel": "google / organic",
-   "viewed": 20325,
-   "cart_rate": 0.26563345633456337,
-   "conversion": 0.0643050430504305,
-   "purchased": 1307,
-   "revenue_usd": 83668.17,
-   "revenue_per_viewer": 4.116515129151291,
+   "viewed": 20206,
+   "cart_rate": 0.1730179154706523,
+   "conversion": 0.03588043155498367,
+   "purchased": 725,
+   "revenue_usd": 95775.0,
+   "revenue_per_viewer": 4.7399287340393945,
    "is_long_tail": false
   },
   {
    "channel": "(direct) / (none)",
-   "viewed": 15951,
-   "cart_rate": 0.31019998746160116,
-   "conversion": 0.09033916368879694,
-   "purchased": 1441,
-   "revenue_usd": 92428.68000000001,
-   "revenue_per_viewer": 5.7945382734624795,
+   "viewed": 14283,
+   "cart_rate": 0.18651543793320732,
+   "conversion": 0.03815724987747672,
+   "purchased": 545,
+   "revenue_usd": 79650.0,
+   "revenue_per_viewer": 5.5765595463138,
+   "is_long_tail": false
+  },
+  {
+   "channel": "<Other> / <Other>",
+   "viewed": 9722,
+   "cart_rate": 0.1796955358979634,
+   "conversion": 0.03569224439415758,
+   "purchased": 347,
+   "revenue_usd": 35470.0,
+   "revenue_per_viewer": 3.6484262497428515,
+   "is_long_tail": false
+  },
+  {
+   "channel": "<Other> / referral",
+   "viewed": 5815,
+   "cart_rate": 0.1836629406706793,
+   "conversion": 0.04024075666380052,
+   "purchased": 234,
+   "revenue_usd": 37000.0,
+   "revenue_per_viewer": 6.362854686156492,
+   "is_long_tail": false
+  },
+  {
+   "channel": "shop.googlemerchandisestore.com / referral",
+   "viewed": 4189,
+   "cart_rate": 0.1924086894246837,
+   "conversion": 0.04750537121031272,
+   "purchased": 199,
+   "revenue_usd": 46521.0,
+   "revenue_per_viewer": 11.10551444258773,
    "is_long_tail": false
   },
   {
    "channel": "google / cpc",
-   "viewed": 9455,
-   "cart_rate": 0.19375991538868323,
-   "conversion": 0.03352723426758329,
-   "purchased": 317,
-   "revenue_usd": 20045.07,
-   "revenue_per_viewer": 2.120049709148599,
-   "is_long_tail": false
-  },
-  {
-   "channel": "youtube.com / referral",
-   "viewed": 5273,
-   "cart_rate": 0.1431822491940072,
-   "conversion": 0.02010240849611227,
+   "viewed": 2908,
+   "cart_rate": 0.16678129298486932,
+   "conversion": 0.03645116918844567,
    "purchased": 106,
-   "revenue_usd": 7009.58,
-   "revenue_per_viewer": 1.3293343447752701,
+   "revenue_usd": 9056.0,
+   "revenue_per_viewer": 3.114167812929849,
    "is_long_tail": false
   },
   {
-   "channel": "shop.googlemerch / referral",
-   "viewed": 3567,
-   "cart_rate": 0.3347350714886459,
-   "conversion": 0.10428931875525652,
-   "purchased": 372,
-   "revenue_usd": 24056.34,
-   "revenue_per_viewer": 6.744137931034483,
+   "channel": "(data deleted) / (data deleted)",
+   "viewed": 2265,
+   "cart_rate": 0.2282560706401766,
+   "conversion": 0.05695364238410596,
+   "purchased": 129,
+   "revenue_usd": 50064.0,
+   "revenue_per_viewer": 22.103311258278147,
    "is_long_tail": false
   },
   {
-   "channel": "newsletter / email",
-   "viewed": 2956,
-   "cart_rate": 0.3440460081190798,
-   "conversion": 0.12855209742895804,
-   "purchased": 380,
-   "revenue_usd": 23481.19,
-   "revenue_per_viewer": 7.943569012178619,
+   "channel": "<Other> / organic",
+   "viewed": 1826,
+   "cart_rate": 0.17634173055859803,
+   "conversion": 0.03778751369112815,
+   "purchased": 69,
+   "revenue_usd": 8232.0,
+   "revenue_per_viewer": 4.508214676889375,
    "is_long_tail": false
   },
   {
-   "channel": "partner-a / referral",
-   "viewed": 1143,
-   "cart_rate": 0.13298337707786526,
-   "conversion": 0.01399825021872266,
-   "purchased": 16,
-   "revenue_usd": 1068.75,
-   "revenue_per_viewer": 0.9350393700787402,
-   "is_long_tail": false
-  },
-  {
-   "channel": "partner-b / referral",
-   "viewed": 620,
-   "cart_rate": 0.20161290322580644,
-   "conversion": 0.03387096774193549,
-   "purchased": 21,
-   "revenue_usd": 1263.6599999999999,
-   "revenue_per_viewer": 2.0381612903225803,
-   "is_long_tail": false
+   "channel": "(long tail)",
+   "viewed": 38,
+   "cart_rate": 0.23684210526315788,
+   "conversion": 0.05263157894736842,
+   "purchased": 2,
+   "revenue_usd": 0.0,
+   "revenue_per_viewer": 0.0,
+   "is_long_tail": true
   }
  ],
  "rice": [
   {
    "rank": 1,
-   "name": "Rework the product page add-to-cart path on the weakest device",
-   "rationale": "Largest absolute loss sits between viewing an item and adding one. The device split says this is a layout and interaction problem, not an intent problem.",
-   "reach": 43868.0,
+   "name": "Rework the product page add-to-cart path",
+   "rationale": "Largest absolute loss sits between viewing an item and adding one, and it is the widest step in the funnel by a wide margin. The visitor type split narrows where to start: new converts 2.80pp below returning, which survives correction.",
+   "reach": 50138.0,
    "impact": 2.0,
    "confidence": 0.7,
    "effort": 3.0,
-   "evidence": "43,868 users lost at this step; $48,637 recoverable at +5pp (upper bound).",
-   "assumptions": "Assumes the gap is friction rather than a difference in visit intent by device. Untested — an A/B test on the mobile PDP settles it.",
-   "rice_score": 20471.733333333334
+   "evidence": "50,138 users lost at this step; $41,308 recoverable at +5pp (upper bound).",
+   "assumptions": "Assumes the loss is friction on the product page rather than browsing intent — many of these users never intended to buy today. Untested; an A/B test on the product page settles it.",
+   "rice_score": 23397.733333333334
   },
   {
    "rank": 2,
-   "name": "Reduce cart-to-checkout friction (persistent cart, single-tap checkout entry)",
-   "rationale": "Users who add to cart have declared intent. Losing them before checkout even starts is the most recoverable kind of loss.",
-   "reach": 8648.0,
-   "impact": 2.0,
-   "confidence": 0.6,
-   "effort": 4.0,
-   "evidence": "8,648 users lost at this step; $28,802 recoverable at +5pp (upper bound).",
-   "assumptions": "Assumes abandonment is friction-driven. Price shock at the cart step would produce the same signature and needs a different fix.",
-   "rice_score": 2594.4
-  },
-  {
-   "rank": 3,
-   "name": "Rebalance paid spend away from the worst-converting channel: partner-a / referral",
+   "name": "Rebalance paid spend away from the worst-converting channel: <Other> / <Other>",
    "rationale": "A channel with high volume and low conversion is a targeting or expectation-mismatch problem and is cheap to act on — it is a budget decision, not an engineering project.",
-   "reach": 1143.0,
+   "reach": 9722.0,
    "impact": 1.0,
    "confidence": 0.75,
    "effort": 1.5,
-   "evidence": "1,143 users from partner-a / referral converting at 1.40% vs 6.68% overall.",
+   "evidence": "9,722 users from <Other> / <Other> converting at 3.57% vs 3.85% overall.",
    "assumptions": "Assumes conversion, not lifetime value, is the right objective for that channel. A brand-awareness channel would be misjudged by this.",
-   "rice_score": 571.5
+   "rice_score": 4861.0
+  },
+  {
+   "rank": 3,
+   "name": "Reduce cart-to-checkout friction (persistent cart, single-tap checkout entry)",
+   "rationale": "Users who add to cart have declared intent. Losing them before checkout even starts is the most recoverable kind of loss.",
+   "reach": 6947.0,
+   "impact": 2.0,
+   "confidence": 0.6,
+   "effort": 4.0,
+   "evidence": "6,947 users lost at this step; $19,991 recoverable at +5pp (upper bound).",
+   "assumptions": "Assumes abandonment is friction-driven. Price shock at the cart step would produce the same signature and needs a different fix.",
+   "rice_score": 2084.1
   },
   {
    "rank": 4,
    "name": "Shorten the checkout form and surface total cost earlier",
    "rationale": "Checkout-stage loss is the classic form-length and unexpected-cost problem, but it is also the stage with the fewest users left.",
-   "reach": 2814.0,
+   "reach": 1811.0,
    "impact": 1.0,
    "confidence": 0.55,
    "effort": 5.0,
-   "evidence": "2,814 users lost at this step; $21,641 recoverable at +5pp (upper bound).",
+   "evidence": "1,811 users lost at this step; $13,257 recoverable at +5pp (upper bound).",
    "assumptions": "Assumes shipping cost and form length dominate. No field-level abandonment data exists in this dataset to confirm it.",
-   "rice_score": 309.54
+   "rice_score": 199.21
   }
  ],
- "reexport_diff": []
+ "reexport_diff": [
+  {
+   "metric": "aov",
+   "previous": 62.968606927710844,
+   "current": 63.62702037947997,
+   "change_pct": 1.0456217532730228,
+   "note": ""
+  },
+  {
+   "metric": "funnel.added_to_cart",
+   "previous": 13622,
+   "current": 11114,
+   "change_pct": -18.411393334312145,
+   "note": ""
+  },
+  {
+   "metric": "funnel.began_checkout",
+   "previous": 5993,
+   "current": 4167,
+   "change_pct": -30.468880360420492,
+   "note": ""
+  },
+  {
+   "metric": "funnel.end_to_end_conversion",
+   "previous": 0.05974025974025974,
+   "current": 0.03846405015346438,
+   "change_pct": -35.614524743113975,
+   "note": ""
+  },
+  {
+   "metric": "funnel.purchased",
+   "previous": 3542,
+   "current": 2356,
+   "change_pct": -33.483907396950876,
+   "note": ""
+  },
+  {
+   "metric": "funnel.viewed",
+   "previous": 59290,
+   "current": 61252,
+   "change_pct": 3.309158374093439,
+   "note": ""
+  },
+  {
+   "metric": "recoverable.added_to_cart",
+   "previous": 48538.15016959023,
+   "current": 41308.24629467737,
+   "change_pct": -14.895301633152252,
+   "note": ""
+  },
+  {
+   "metric": "recoverable.began_checkout",
+   "previous": 25347.74006142483,
+   "current": 19990.96544031924,
+   "change_pct": -21.133144841017746,
+   "note": ""
+  },
+  {
+   "metric": "recoverable.purchased",
+   "previous": 18868.543065888556,
+   "current": 13256.689696064654,
+   "change_pct": -29.741847848174757,
+   "note": ""
+  },
+  {
+   "metric": "retention.censored_share",
+   "previous": 0.46153846153846156,
+   "current": 0.5357142857142857,
+   "change_pct": 16.071428571428562,
+   "note": ""
+  },
+  {
+   "metric": "retention.w1",
+   "previous": 0.5848889831706973,
+   "current": 0.04267620036878679,
+   "change_pct": -92.70353834715127,
+   "note": ""
+  },
+  {
+   "metric": "retention.w4",
+   "previous": 0.08475270423281699,
+   "current": 0.01199733877212691,
+   "change_pct": -85.84429974155157,
+   "note": ""
+  }
+ ]
 };

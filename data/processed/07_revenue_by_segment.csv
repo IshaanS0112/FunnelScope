@@ -1,23 +1,27 @@
 device_category,source_medium,purchases,purchasing_users,revenue_usd
-desktop,(direct) / (none),882,882,56609.69
-desktop,google / organic,823,823,53379.97
-mobile,(direct) / (none),458,458,29764.88
-mobile,google / organic,419,419,25847.19
-desktop,newsletter / email,256,256,16060.71
-desktop,shop.googlemerch / referral,229,229,14612.82
-desktop,google / cpc,198,198,12817.04
-mobile,shop.googlemerch / referral,115,115,7613.74
-mobile,newsletter / email,105,105,6511.48
-tablet,(direct) / (none),101,101,6054.11
-mobile,google / cpc,92,92,5636.2
-tablet,google / organic,65,65,4441.01
-desktop,youtube.com / referral,52,52,3714.54
-mobile,youtube.com / referral,46,46,2779.85
-tablet,shop.googlemerch / referral,28,28,1829.78
-tablet,google / cpc,27,27,1591.83
-tablet,newsletter / email,19,19,909.0
-desktop,partner-b / referral,13,13,693.16
-desktop,partner-a / referral,11,11,680.89
-mobile,partner-b / referral,8,8,570.5
-tablet,youtube.com / referral,8,8,515.19
-mobile,partner-a / referral,5,5,387.86
+desktop,google / organic,787,678,52036.0
+desktop,(direct) / (none),726,601,45813.0
+mobile,google / organic,644,535,41982.0
+mobile,(direct) / (none),499,432,32451.0
+desktop,(data deleted) / (data deleted),479,390,28932.0
+desktop,shop.googlemerchandisestore.com / referral,374,309,25551.0
+desktop,<Other> / referral,329,278,24298.0
+desktop,<Other> / <Other>,353,285,20880.0
+mobile,(data deleted) / (data deleted),335,277,20305.0
+mobile,shop.googlemerchandisestore.com / referral,308,246,19720.0
+mobile,<Other> / <Other>,239,200,14228.0
+mobile,<Other> / referral,220,182,11902.0
+desktop,google / cpc,103,97,6038.0
+desktop,<Other> / organic,70,57,5008.0
+mobile,<Other> / organic,46,38,3196.0
+mobile,google / cpc,60,52,2846.0
+tablet,google / organic,23,21,1757.0
+tablet,(direct) / (none),26,25,1386.0
+tablet,shop.googlemerchandisestore.com / referral,19,15,1250.0
+tablet,(data deleted) / (data deleted),16,15,827.0
+tablet,<Other> / referral,8,8,800.0
+tablet,<Other> / <Other>,14,14,362.0
+desktop,<Other> / (data deleted),5,5,259.0
+tablet,google / cpc,3,3,172.0
+mobile,<Other> / (data deleted),4,4,138.0
+tablet,<Other> / organic,2,2,28.0

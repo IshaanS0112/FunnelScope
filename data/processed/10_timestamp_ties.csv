@@ -1,0 +1,4 @@
+step,counted_strict,excluded_by_tie,counted_at_or_after
+viewed -> added_to_cart,11114,1422,12536
+added_to_cart -> began_checkout,4167,0,4167
+began_checkout -> purchased,2356,0,2356

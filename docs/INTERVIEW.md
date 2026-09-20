@@ -12,9 +12,10 @@ you will get, and the second is a trap.
 ## The funnel
 
 **Walk me through your funnel — where's the biggest drop-off?**
-View → cart is the widest gap and it dominates everything downstream, because it is both
-the steepest rate and where the most users are. The numbers are in `docs/MEMO.md`; the
-query is `sql/02_funnel_ordered.sql`.
+61,252 users viewed an item, 11,114 carted, 4,167 began checkout, 2,356 bought — 3.85%
+end to end. View → cart is the widest gap at 81.9% lost, and it dominates everything
+downstream because it is both the steepest rate and where the most users are. The query
+is `sql/02_funnel_ordered.sql`.
 
 **Ordered or unordered funnel, and why?**
 Ordered. Each stage must occur after the previous one. An unordered funnel asks "did this
@@ -34,11 +35,41 @@ missing predicates.
 **How do you know the two funnel implementations agree?**
 The pipeline refuses to emit metrics if they diverge by more than 0.5%. One computes
 first-occurrence timestamps and compares them; the other collapses each user's events
-into an ordered string and matches a sequence regex. They share no logic beyond the source
-table, so agreement is evidence rather than a tautology — an error in timestamp comparison
-cannot hide inside regex matching. The only tolerated drift is users with two funnel
-events at the identical microsecond: method A uses strict `>` and drops them, method B
-keeps whatever order `STRING_AGG` emits.
+into an ordered string and matches a sequence regex. The funnel logic is independent, so
+an error in timestamp comparison cannot hide inside regex matching.
+
+**Did the gate ever actually fire?** *(Ask me this one.)*
+Yes — on the first real BigQuery export, by 17%. Neither query had a bug; they were
+answering different questions, and my synthetic fixture could not show it because every
+fake user did each step once at a distinct timestamp.
+
+Two causes, both specific to real GA4 data. First, **repeat events**: a regex over every
+event asks "ever carted after ever viewing", while the funnel asks "did the first cart
+follow the first view". Users repeat constantly here — 6.3 view_item events per user,
+4.67 add_to_cart per carting user — and one pattern alone, carted then browsed then
+carted again, accounted for 938 extra users. Second, **GA4 batches events**: everything
+in one network request shares an `event_timestamp`, so adding to cart from a listing ties
+with the view. 1,422 users tie, 12.8% of carters. Strict `>` drops all of them;
+`STRING_AGG` ordered only by timestamp kept about half.
+
+Fixed by restricting the validation query to first occurrences and breaking ties by stage
+rank descending, which reproduces the strict-`>` rule exactly. The two methods now agree
+to zero difference at every stage. I also rewrote the fixture to generate both behaviours
+and added tests asserting it still does, because finding this in production data rather
+than in the fixture means the fixture was not testing anything.
+
+**Doesn't restricting to first occurrences make the check weaker?**
+Slightly — both methods now read `MIN(event_timestamp)`. But the funnel logic on top is
+still wholly independent, and that is what the gate is for: a stage predicate that is not
+cumulative cannot survive a sequence regex. A gate that compares two different
+definitions is not a stronger gate, it is a broken one that happens to be loud.
+
+**How much did your own ordering rule throw away?**
+1,422 users, 12.8% of the cart stage — the ones whose view and cart share a microsecond
+because GA4 batched them. Under `>=` the stage reads 12,536 instead of 11,114. I kept the
+strict reading because an equal timestamp is not evidence of an ordering, but I measure
+it in `sql/10_timestamp_ties.sql` and state the number in the memo's limitations. A
+conservative choice you do not quantify is just an undisclosed one.
 
 **User-level or session-level?**
 Both, and the gap between them is reported. The user-scoped funnel answers "does this user
@@ -60,15 +91,31 @@ example.
 
 ## Statistics
 
-**How did you know the mobile/desktop difference was real?**
-Pooled two-proportion z-test for the statistic, unpooled Wald interval for the CI on the
-difference, two-sided at α = 0.05 — then Holm-corrected across the comparison family.
+**How did you know the device difference was real?**
+*It wasn't.* Desktop 3.77% vs mobile 3.95%, p = 0.27 — inside the noise, and the memo says
+"do not act on it" rather than writing it up. That is the whole reason the test is there:
+the device split is the cut everyone expects to be the finding, and on this dataset it is
+not one. The gap that does survive is new vs returning, 3.60% vs 6.40%, adjusted
+p = 2e-24.
 
-**Why bother testing at n = 30,000, where everything is significant?**
-On the headline comparison it *is* close to a formality, and the memo says so. It stops
-being one on the small segments — a 600-user channel, a tablet cohort — which is exactly
-where an unguarded analysis invents findings. Reporting the interval alongside the point
-estimate is what keeps a 0.3pp difference from being written up as a discovery.
+Pooled two-proportion z-test for the statistic, unpooled Wald interval for the CI on the
+difference, two-sided at α = 0.05, Holm-corrected across the comparison family.
+
+**How does the memo avoid asserting a finding the data rejects?**
+It does not pick the headline gap in advance. `analyze.py` sizes every segment gap it
+compared, keeps only those surviving Holm, and the memo leads with the largest survivor —
+or states plainly that none survived. An earlier version hardcoded the device narrative
+into the template, which would have published a device finding the z-test had already
+rejected, and the fixture could not catch it because the fixture was generated with a
+device effect baked in.
+
+**Why bother testing at n = 60,000, where everything is significant?**
+Because it isn't. The device comparison has 35,711 desktop users against 24,151 mobile —
+enormous by any standard — and still comes back at p = 0.27. That is the answer to the
+question: large n makes small *real* effects detectable, it does not manufacture effects
+that are not there. The 0.18pp device difference is what an unguarded analysis writes up
+as "mobile underperforms" and then spends a quarter fixing. Reporting the interval
+alongside the point estimate is what stops that.
 
 **Why Holm and not Bonferroni?**
 Uniformly more powerful under the same assumptions, so it costs nothing. Sort the
@@ -163,13 +210,21 @@ plausible-looking output, so there is an explicit test.
 
 ## Engineering
 
+**What was the most expensive thing you found?**
+`ga_session_id` lives inside `event_params`, and BigQuery cannot read one key out of a
+repeated record without reading the record. The session-scoped funnel therefore scans
+982 MB for a single integer — more than the next four queries combined, and 5.7× the
+identical funnel partitioned on `user_pseudo_id`. That is in `docs/QUERY_COSTS.md`
+alongside the header estimate it disproved.
+
 **How did you control BigQuery costs?**
 `_TABLE_SUFFIX BETWEEN` on every wildcard query — without it you scan every daily table in
 the dataset, and that is the mistake that burns the free tier. No `SELECT *` anywhere,
 including inside CTEs, because BigQuery is columnar and bills per column. Dry-run before
 every run. And knowing what does *not* help: `LIMIT` truncates the result, not the scan,
 and `WHERE event_name = ...` reduces rows, not columns. Neither saves a byte. A full
-refresh is ≈ 4.9 GB against a 1 TiB monthly allowance.
+refresh is 2.7 GB measured against a 1 TiB monthly allowance — about 380 free
+re-runs a month, logged per query in `docs/QUERY_COSTS.md`.
 
 **Why export to CSV instead of querying BigQuery from the dashboard?**
 Two sandbox constraints force it — tables and views expire after 60 days and DML is
@@ -206,8 +261,9 @@ cart-abandonment exit survey, and an A/B test on the top recommendation.
 
 **What's the biggest weakness of the whole thing?**
 `user_pseudo_id` is per browser, not per person. Someone who browses on a phone and buys
-on a laptop is two users, one of whom never converts — which inflates the device gap by an
-unknown amount, and the device gap is the headline finding. It is first in the memo's
+on a laptop is two users, one of whom never converts. That distorts every segment
+comparison by an unknown amount — including the new-vs-returning gap that is the headline
+finding, since a returning user on a second device looks new. It is first in the memo's
 limitations for that reason, ranked by threat rather than by how easy it is to admit.
 
 **This is a public demo dataset, not a problem you found.**

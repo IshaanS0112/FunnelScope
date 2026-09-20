@@ -42,16 +42,56 @@ COUNTIF(cart_ts > view_ts AND checkout_ts > cart_ts
 `funnelscope.funnel.check_monotonic` fails the pipeline if this invariant ever breaks,
 and `tests/test_sql_and_pipeline.py` greps the SQL itself for the missing predicates.
 
-### Cross-validation
+### Cross-validation, and the two things it caught
 
-The funnel is computed a second time by a method that shares no logic with the first:
-each user's events are collapsed into an ordered string (`V`, `C`, `K`, `P`) and tested
-with a sequence regex (`sql/02b_funnel_validation.sql`). The pipeline refuses to produce
-metrics if the two disagree by more than 0.5%.
+The funnel is computed a second time by a method that shares no funnel logic with the
+first: each user's events are collapsed into an ordered string (`V`, `C`, `K`, `P`) and
+tested with a sequence regex (`sql/02b_funnel_validation.sql`). The pipeline refuses to
+produce metrics if the two disagree by more than 0.5%.
 
-The only expected source of drift is users with two funnel events at the identical
-microsecond: method A uses strict `>` and drops them, method B keeps whatever order
-`STRING_AGG` emits. Anything larger is a bug.
+**It fired on the first real BigQuery export, and it was right to.** The two methods
+differed by 9.6% / 16.2% / 17.3% across the three lower stages. Neither query had a bug.
+They were answering different questions, and the fixture could not show it because every
+synthetic user did each step exactly once at a distinct timestamp.
+
+**Cause 1 — repeat events.** `STRING_AGG` over *every* event makes
+`REGEXP_CONTAINS(seq, 'V.*C')` ask "did this user EVER cart after EVER viewing", while
+`02` asks "did this user's FIRST cart follow their FIRST view". Those diverge the moment
+a user repeats a step, and in this dataset they repeat constantly: **6.3 `view_item`
+events per user, and 4.67 `add_to_cart` events per user who carts at all.** One pattern
+alone — carted, browsed more, carted again — accounted for 938 extra users at the cart
+stage. `02b` now aggregates first occurrences only.
+
+**Cause 2 — GA4 batches events.** Every event in one network request carries the same
+`event_timestamp`. Adding to cart straight from a product listing sends `view_item` and
+`add_to_cart` together, so they tie exactly. **1,422 users tie at that step, 12.8% of
+everyone who carts.** `02` uses strict `>` and drops all of them; `STRING_AGG` ordered
+only by timestamp emits an arbitrary order and kept roughly half, leaving a 6.7%
+residual gap. `02b` now orders by `first_ts, stage_rank DESC`, so a tie renders as `CV`
+and fails the regex — exactly what `cart_ts > view_ts` does.
+
+With both fixed the two methods agree **exactly**: 61,252 / 11,114 / 4,167 / 2,356, zero
+difference at every stage. The check is marginally weaker for it, since both now read
+`MIN(event_timestamp)`, but it is *correct*, and the bug the gate exists to catch —
+stage predicates that are not cumulative — still cannot survive a sequence regex. A gate
+that compares two different definitions is not a stronger gate; it is a broken one.
+
+**The fixture now reproduces both behaviours** (`scripts/make_fixture.py`: repeat views
+and carts, and a 12% rate of same-microsecond cart events), with
+`tests/test_fixture_realism.py` asserting it still does. Finding this in the real export
+rather than in the fixture is the failure mode PART 7 of the spec warns about, and the
+tests exist so it cannot happen twice.
+
+### The cost of strict ordering, stated rather than assumed
+
+Dropping 1,422 users because two of their events share a microsecond is a choice. It is
+the conservative one — an equal timestamp is not evidence of an ordering — and it is
+what "each step must occur *after* the previous one" means. But it is not a small
+choice: under `>=` the cart stage would read 12,536 rather than 11,114.
+
+`sql/10_timestamp_ties.sql` measures it per step and `metrics.json` carries the result,
+so the memo can state the magnitude in its limitations. Ties at the other two steps:
+zero. An unquantified conservative choice is just an undisclosed one.
 
 ### User-scoped and session-scoped, and why both are reported
 
@@ -244,6 +284,23 @@ segments — a channel with 600 users, a tablet cohort — which is exactly wher
 unguarded analysis invents findings. Reporting the interval alongside the point estimate
 is what keeps a 0.3pp difference from being written up as a discovery.
 
+### Which comparison leads the memo
+
+Nothing decides that in advance. `scripts/analyze.py` sizes every segment gap it tested,
+keeps the ones surviving Holm, and the memo leads with the largest survivor — or states
+that none survived.
+
+This is not hypothetical tidiness. An earlier version always sized the **device** gap,
+because the device split is usually the largest and most actionable cut in an ecommerce
+funnel, and the memo template had a device narrative written into its TL;DR. On this
+dataset the device gap is **not significant** — desktop 3.77% vs mobile 3.95%, p = 0.27,
+on 35,711 and 24,151 users respectively — so the memo would have led with a finding this
+pipeline's own z-test rejects. The synthetic fixture could never have caught it, because
+the fixture is generated with a device effect deliberately baked in.
+
+The gap that does survive is **new vs returning**: 3.60% against 6.40%, adjusted
+p = 2e-24, worth about $99k in this window as an upper bound.
+
 ### Multiple comparisons
 
 Several segment comparisons are run, and at α = 0.05 each the family-wise error rate is
@@ -297,9 +354,10 @@ Full refresh ≈ 4 GB against a 1 TiB monthly free allowance.
 ## 9. Limitations, ranked by how much they threaten the conclusions
 
 1. **No cross-device identity.** `user_pseudo_id` is per browser. A user who browses on
-   mobile and buys on desktop appears as two users, one of whom never converts. This
-   inflates the measured mobile/desktop gap by an unknown amount and is the single
-   largest threat to the headline finding.
+   mobile and buys on desktop appears as two users, one of whom never converts — and a
+   returning user arriving on a second device is classified as new. That distorts every
+   segment comparison by an unknown amount, including the new-vs-returning gap the memo
+   leads with, and it is the single largest threat to the conclusions.
 2. **Three-month window.** Adequate for funnel work, short for retention; late cohorts
    are censored and handled as described above.
 3. **Public demo dataset.** This is Google's obfuscated sample export, not a business

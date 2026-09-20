@@ -49,8 +49,10 @@ class Manifest:
     def banner(self) -> str:
         """One line to place at the top of any artifact built from this data."""
         if self.is_real:
+            # No "Data:" prefix — every consumer supplies its own label, and the memo's
+            # letterhead was printing "Data: Data: bigquery-public-data...".
             return (
-                f"Data: {self.dataset}, {self.window_start} to {self.window_end}. "
+                f"{self.dataset}, {self.window_start} to {self.window_end}. "
                 f"Exported {self.generated_at[:10]}."
             )
         return f"[SYNTHETIC FIXTURE] {FIXTURE_WARNING}"

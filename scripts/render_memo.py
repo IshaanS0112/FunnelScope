@@ -40,6 +40,16 @@ def pct(x: float, places: int = 1) -> str:
     return f"{x * 100:.{places}f}%"
 
 
+def article(rendered: str) -> str:
+    """"a" or "an" in front of a rendered number. "a 81.9% drop" reads as a typo.
+
+    English takes the article from how the number is SAID: eight, eleven, eighteen and
+    anything starting 8/11/18 begin with a vowel sound.
+    """
+    digits = rendered.lstrip("$").lstrip()
+    return "an" if digits.startswith(("8", "11", "18")) else "a"
+
+
 def money(x: float) -> str:
     return f"${x:,.0f}"
 
@@ -141,11 +151,10 @@ def build_tokens(m: dict, author: str) -> dict:
             f"the family-wise error rate at {mc['alpha']}.")
     else:
         correction_sentence = (
-            f"All {mc['family_size']} comparisons were {mc['method']}-corrected for "
-            f"multiple testing and the p-values are small enough that it changes none of "
-            f"the conclusions — worth stating rather than using as a reason to skip the "
-            f"correction, because a borderline result here should not be trusted "
-            f"without it.")
+            f"{mc['n_significant_after_correction']} of {mc['family_size']} comparisons "
+            f"survive {mc['method']} correction, and it flips none of them — the "
+            f"survivors sit far below the adjusted thresholds. Worth stating rather than "
+            f"using as a reason to skip the correction.")
 
     scope = m.get("scope_comparison")
     if scope:
@@ -170,8 +179,64 @@ def build_tokens(m: dict, author: str) -> dict:
     except Exception:
         pass
 
+    # ---- sentences that depend on WHAT THE DATA SAID, not on the template ----------
+    # These were fixed prose until the real export showed the device gap was not
+    # significant (p = 0.27). A template that asserts a device finding regardless of the
+    # z-test is a template that will eventually publish something false, so the claim is
+    # generated from the surviving gap — or from its absence.
+    top_rec = m["rice"][0]
+    if gap:
+        gap_headline = (
+            f"**{gap['segment_a']} converts {abs(gap['gap_pp']):.2f}pp below "
+            f"{gap['segment_b']}** ({pct(gap['conversion_a'], 2)} vs "
+            f"{pct(gap['conversion_b'], 2)}), the widest gap surviving Holm correction "
+            f"(adjusted p = {gap.get('p_value_adjusted', float('nan')):.2g}). Closing it "
+            f"was worth **{money(gap['value_if_closed'])}**, upper bound.")
+        next_investigation = (
+            f"**Why {gap['segment_a']} converts worse than {gap['segment_b']}.** Whether "
+            f"it is friction or a difference in intent is not answerable from event "
+            f"counts. Session recordings on that cohort would settle it.")
+    else:
+        rejected = ", ".join(
+            f"{g.get('segment_type', 'segment')} {g['segment_a']} vs {g['segment_b']} "
+            f"({abs(g['gap_pp']):.2f}pp, p = {g['p_value']:.2f})"
+            for g in m.get("segment_gaps_all", []))
+        gap_headline = (
+            "**No segment gap survives correction.** Every cut tested — " +
+            (rejected or "device, visitor type and channel") +
+            " — is within sampling noise, so none of them is written up as a finding. "
+            "The loss is whole-funnel, not concentrated in a segment.")
+        next_investigation = (
+            "**A cut this data does not contain.** No segment available here separates "
+            "the drop-off, so the next question is which one would — logged-in status, "
+            "product category, or price band, none of which survive obfuscation.")
+
+    priority_bullet = (
+        f"**Start with: {top_rec['name'].lower()}.** It leads RICE at "
+        f"{top_rec['rice_score']:,.0f} against {m['rice'][1]['rice_score']:,.0f} next, "
+        f"on a reach term ({int(top_rec['reach']):,} users) that is measured."
+        if len(m["rice"]) > 1 else
+        f"**Start with: {top_rec['name'].lower()}.** Its reach term "
+        f"({int(top_rec['reach']):,} users) is measured rather than assumed.")
+
+    tie_info = (m.get("validation") or {}).get("timestamp_ties")
+    if tie_info and tie_info.get("excluded_by_tie"):
+        tie_sentence = (
+            f"**{tie_info['excluded_by_tie']:,} users ({pct(tie_info['share_of_counted'], 0)} "
+            f"of the cart stage) are excluded by the strict ordering rule** — GA4 stamps "
+            f"every event in one request with the same microsecond, so carting from a "
+            f"listing ties with the view. Under `>=` the stage reads "
+            f"{tie_info['counted_at_or_after']:,}. Strict is the conservative reading.")
+    else:
+        tie_sentence = ("**No funnel events share a timestamp**, so the strict ordering "
+                        "rule excludes nobody.")
+
     return {
         "author": author,
+        "gap_headline": gap_headline,
+        "priority_bullet": priority_bullet,
+        "next_investigation": next_investigation,
+        "tie_sentence": tie_sentence,
         "window_start": m["provenance"]["window_start"],
         "window_end": m["provenance"]["window_end"],
         "window_days": f"{window_days}" if window_days else "the analysis window's",
@@ -180,6 +245,7 @@ def build_tokens(m: dict, author: str) -> dict:
         "end_to_end_conversion": pct(f["end_to_end_conversion"], 2),
         "worst_step_lost": f"{worst['lost']:,}",
         "worst_step_dropoff": pct(1 - worst["step_conversion"]),
+        "worst_step_article": article(pct(1 - worst["step_conversion"])),
         "worst_step_label": f"{STAGE_LABELS[worst['from']]} → {STAGE_LABELS[worst['to']]}",
         "funnel_table": "\n".join(funnel_rows),
         "segment_table": "\n".join(dev_rows),
@@ -241,9 +307,17 @@ def main() -> int:
     # tables are reference material a reader scans, prose is what they have to read.
     # Letterhead (To/From/Re/Data) is metadata, not argument, so it is not charged
     # against the budget -- and neither are tables or the provenance footer.
+    # Excluded from the budget, on the same grounds the spec excludes the letterhead
+    # and the footer: none of it is argument a reader has to read through.
+    #   "|"        table rows — reference material, scanned not read
+    #   ">"        the provenance banner
+    #   "#"        section headings — navigation
+    #   "---"      rules
+    #   letterhead To/From/Re/Data, and the footer
     prose_lines = [ln for ln in text.splitlines()
                    if not ln.lstrip().startswith(
-                       ("|", ">", "*Numbers", "**To:**", "**From:**", "**Re:**", "**Data:**"))]
+                       ("|", ">", "#", "---", "*Numbers",
+                        "**To:**", "**From:**", "**Re:**", "**Data:**"))]
     words = len(re.sub(r"[`#*_]", " ", "\n".join(prose_lines)).split())
     print(f"Wrote {OUTPUT.relative_to(REPO_ROOT)}  ({words} words of prose, "
           f"tables excluded)")

@@ -343,6 +343,43 @@
     ]));
   }
 
+  /* The cost of the strict ordering rule, stated rather than assumed. */
+  function renderTies() {
+    var host = document.getElementById("tie-block");
+    if (!host) return;
+    var info = (D.validation || {}).timestamp_ties;
+    if (!info || !info.excluded_by_tie) {
+      host.appendChild(el("p", {
+        class: "note",
+        text: "No funnel events in this export share a timestamp, so the strict ordering "
+          + "rule excludes nobody."
+      }));
+      return;
+    }
+    host.appendChild(el("div", {
+      class: "banner caution",
+      html: "<strong>What the strict rule costs: " + num(info.excluded_by_tie) +
+        " users</strong>" +
+        "Dropping a user because two of their events share a microsecond is a choice. " +
+        "It is the conservative one — an equal timestamp is not evidence of an ordering — " +
+        "but it is not a small one: that is " + pct(info.share_of_counted, 0) +
+        " of the counted cart stage. Under <code>&gt;=</code> the stage would read " +
+        num(info.counted_at_or_after) + " rather than " + num(info.counted_strict) +
+        ". Ties at the other two steps: none. An unquantified conservative choice is " +
+        "just an undisclosed one, so it is measured in " +
+        "<code>sql/10_timestamp_ties.sql</code> and stated in the memo's limitations."
+    }));
+    host.appendChild(el("div", { class: "table-scroll" }, [table(info.rows, [
+      { head: "Step", get: function (r) { return r.step; } },
+      { head: "Counted (strict >)", num: true,
+        get: function (r) { return num(r.counted_strict); } },
+      { head: "Excluded by a tie", num: true,
+        get: function (r) { return num(r.excluded_by_tie); } },
+      { head: "Would count under >=", num: true,
+        get: function (r) { return num(r.counted_at_or_after); } }
+    ])]));
+  }
+
   /* ---------------- retention page ---------------- */
 
   function renderRetention() {
@@ -793,6 +830,7 @@
   renderSegmentPicker();
   renderScope();
   renderXval();
+  renderTies();
   renderRetention();
   renderAcquisition();
   renderOpportunity();

@@ -68,9 +68,10 @@ pytest -q                                # full test suite
   <img src="docs/screenshots/site-1-funnel.png" alt="The static site's Funnel page: stage counts, step conversion by segment, and the user-scoped versus session-scoped comparison." width="100%">
 </p>
 
-The static site's **Funnel** page. Every figure is stamped with its provenance — the banner
-at the top is derived from the same manifest the numbers are, so fixture output cannot
-render as a clean analysis.
+The static site's **Funnel** page, on the real GA4 export: 61,252 viewers → 11,114 carts →
+4,167 checkouts → 2,356 purchases, 3.85% end to end. The green banner is derived from the
+same manifest the numbers are, so fixture output cannot render as a clean analysis — it
+gets a red "NOT AN ANALYSIS" banner it cannot lose.
 
 <p align="center">
   <img src="docs/screenshots/site-2-retention.png" alt="Cohort retention grid with right-censored cells drawn as hatched blanks, and the pooled retention curve." width="100%">
@@ -90,11 +91,20 @@ table blurs: high traffic with low conversion is a landing-page problem (spend l
 traffic with high conversion is a scale opportunity (spend more).
 
 <p align="center">
+  <img src="docs/screenshots/site-5-validation-gate.png" alt="The cross-validation gate expanded, showing both funnel methods agreeing to zero difference and the table of users excluded by timestamp ties." width="100%">
+</p>
+
+**The correctness gate**, and the two GA4 behaviours it caught on the first real export —
+repeat events and batched timestamps. Both methods now agree to zero difference at every
+stage, and the cost of the strict ordering rule is measured rather than assumed.
+
+<p align="center">
   <img src="docs/screenshots/streamlit-4-opportunity.png" alt="The Streamlit dashboard's Opportunity page: sizing table with bootstrap intervals, sensitivity sweep and Holm-corrected significance verdicts." width="100%">
 </p>
 
 The Streamlit dashboard's **Opportunity** page — sizing with bootstrap intervals, the
-sensitivity sweep, and Holm-corrected significance verdicts.
+sensitivity sweep, and Holm-corrected significance verdicts. Note the device comparison:
+*not distinguishable from noise*, and reported as such.
 [More screenshots](docs/screenshots/).
 
 ---
@@ -134,8 +144,10 @@ python scripts/build_web.py               # metrics.json -> web/data.js
 Or `make all`, which runs the last three in order.
 
 BigQuery Sandbox is free, needs no billing account, and gives 1 TiB/month. A full refresh
-here is ≈ 4.9 GB — roughly 200 free re-runs a month. Per-query costs are logged in
-[`docs/QUERY_COSTS.md`](docs/QUERY_COSTS.md).
+here is **2.7 GB measured** — roughly 380 free re-runs a month. Per-query bytes are logged
+in [`docs/QUERY_COSTS.md`](docs/QUERY_COSTS.md); `09` alone is 982 MB, more than the next
+four queries combined, because `ga_session_id` lives inside `event_params` and BigQuery
+cannot read one key out of a repeated record without reading the record.
 
 ---
 
@@ -173,11 +185,30 @@ exceeds an earlier one. It raises no error — it just quietly produces a better
 number. Explained in the file, enforced by `funnelscope.funnel.check_monotonic`, and
 grepped for by a test.
 
-**`sql/02b_funnel_validation.sql` — the same funnel, computed a second way.**
-Events are collapsed into an ordered string and matched with a sequence regex. It shares
-no logic with the timestamp method. The pipeline **refuses to emit metrics** if the two
-disagree by more than 0.5%, so a memo cannot be produced from a funnel that failed
-validation.
+**`sql/02b_funnel_validation.sql` — the same funnel, computed a second way, and the
+best thing in the repo.** Events are collapsed into an ordered string and matched with a
+sequence regex; the funnel logic shares nothing with the timestamp method. The pipeline
+**refuses to emit metrics** if the two disagree by more than 0.5%.
+
+**It fired on the first real BigQuery export, by 17%, and it was right to.** Neither
+query had a bug — they were answering different questions, and the synthetic fixture
+could not reveal it because every simulated user did each step once at a distinct
+timestamp. Two causes, both specific to real GA4 data: **repeat events** (6.3 `view_item`
+per user, 4.67 `add_to_cart` per carting user, so "ever carted after ever viewing" and
+"first cart after first view" are different questions — one pattern alone accounted for
+938 extra users) and **batched timestamps** (GA4 stamps every event in one request with
+the same microsecond, so carting from a listing ties with the view; strict `>` drops
+those users, an arbitrary sequence order kept half). Both queries now answer the same
+question under the same tie rule and agree to **zero difference at every stage**. The
+fixture reproduces both behaviours, with `tests/test_fixture_realism.py` asserting it
+still does.
+
+**`sql/10_timestamp_ties.sql` — what the strict ordering rule costs.**
+1,422 users, 12.8% of the cart stage, are excluded because GA4 batched their view and
+cart into one request. Under `>=` the stage reads 12,536 instead of 11,114. The strict
+reading is kept — an equal timestamp is not evidence of an ordering — but the magnitude
+is measured and stated in the memo's limitations, because an unquantified conservative
+choice is just an undisclosed one.
 
 **`sql/09_funnel_session_scoped.sql` — the same funnel, scoped to the visit.**
 Session-scoped conversion is necessarily no higher than user-scoped conversion, and the
@@ -205,10 +236,19 @@ that exist. `densify()` expands the grid to the full cohort × week rectangle fi
 Without it the censored share is computed over observed cells only and can read as exactly
 0% while appearing to work.
 
-**`funnelscope/stats.py` — Holm–Bonferroni.**
+**`funnelscope/stats.py` — Holm–Bonferroni, and a finding it prevented.**
 Several segment comparisons at α = 0.05 each do not hold the family-wise error rate at
 0.05; with four comparisons it is 18.5%. Both raw and adjusted p-values are reported and
 the corrected verdict is the one the memo quotes.
+
+More useful than the correction itself: **the device gap is not significant here.**
+Desktop 3.77% against mobile 3.95%, p = 0.27, on 35,711 and 24,151 users. The device
+split is the cut everyone expects to be the finding, and on this dataset it is not one —
+so the memo says "do not act on it" instead of writing it up. An earlier version of the
+pipeline always sized the device gap and had a device narrative written into the memo
+template, which would have published a claim the z-test had already rejected. The
+headline gap is now whichever one survives correction (here: new vs returning, 3.60% vs
+6.40%, adjusted p = 2e-24), or a plain statement that none did.
 
 **`funnelscope/io.py` — provenance you cannot bypass.**
 Every write stamps `data/processed/_manifest.json` with `bigquery` or
@@ -221,7 +261,7 @@ test asserts the linkage in both directions.
 ## Repository layout
 
 ```
-sql/            10 documented queries + a README with per-query scan costs
+sql/            11 documented queries + a README with measured per-query scan costs
 funnelscope/    funnel maths, censoring, sizing, z-tests, Holm, RICE
                 (one implementation, shared by everything downstream)
 scripts/        run_queries · make_fixture · analyze · render_memo · build_web
@@ -230,7 +270,7 @@ notebooks/      analysis.ipynb — exploration; imports funnelscope, re-implemen
 web/            static site — index.html · styles.css · app.js · data.js (generated)
 app/            streamlit_app.py — Funnel · Retention · Acquisition · Opportunity
 docs/           MEMO.md (the deliverable) · MEMO_TEMPLATE.md · methodology.md
-                QUERY_COSTS.md · INTERVIEW.md
+                QUERY_COSTS.md · INTERVIEW.md · screenshots/
 tests/          invariants, SQL static checks, full pipeline, both front ends
 ```
 

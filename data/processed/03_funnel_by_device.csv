@@ -1,4 +1,4 @@
 segment_type,segment_value,viewed,added_to_cart,began_checkout,purchased
-device_category,mobile,31013,6523,2443,1248
-device_category,desktop,24226,7855,3890,2464
-device_category,tablet,4051,1044,441,248
+device,desktop,35711,6442,2402,1348
+device,mobile,24151,4433,1674,954
+device,tablet,1390,239,91,54

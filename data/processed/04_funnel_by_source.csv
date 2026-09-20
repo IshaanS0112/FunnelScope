@@ -1,9 +1,10 @@
 segment_type,segment_value,viewed,added_to_cart,began_checkout,purchased
-source_medium,google / organic,20325,5399,2293,1307
-source_medium,(direct) / (none),15951,4948,2381,1441
-source_medium,google / cpc,9455,1832,637,317
-source_medium,youtube.com / referral,5273,755,228,106
-source_medium,shop.googlemerch / referral,3567,1194,586,372
-source_medium,newsletter / email,2956,1017,551,380
-source_medium,partner-a / referral,1143,152,55,16
-source_medium,partner-b / referral,620,125,43,21
+source_medium,google / organic,20206,3496,1287,725
+source_medium,(direct) / (none),14283,2664,980,545
+source_medium,<Other> / <Other>,9722,1747,644,347
+source_medium,<Other> / referral,5815,1068,413,234
+source_medium,shop.googlemerchandisestore.com / referral,4189,806,332,199
+source_medium,google / cpc,2908,485,186,106
+source_medium,(data deleted) / (data deleted),2265,517,207,129
+source_medium,<Other> / organic,1826,322,115,69
+source_medium,(long tail),38,9,3,2

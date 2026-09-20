@@ -37,14 +37,19 @@ METRICS_PATH = fio.PROCESSED_DIR / "metrics.json"
 # effort and confidence are judgement, stated here so a reader can disagree with a
 # specific number rather than with the ranking as a whole.
 INTERVENTION_CATALOG = {
+    # NOTE: this entry used to name the device split as its evidence ("rework the
+    # add-to-cart path on the weakest device"). On the real GA4 export the device gap is
+    # not significant, so that rationale asserted a finding this pipeline's own z-test
+    # rejects. The claim is now built at scoring time from whichever segment gap
+    # actually survives correction, and says so plainly when none does.
     "added_to_cart": dict(
-        name="Rework the product page add-to-cart path on the weakest device",
+        name="Rework the product page add-to-cart path",
         impact=rice.IMPACT_SCALE["high"], confidence=0.7, effort=3.0,
-        rationale="Largest absolute loss sits between viewing an item and adding one. "
-                  "The device split says this is a layout and interaction problem, not "
-                  "an intent problem.",
-        assumptions="Assumes the gap is friction rather than a difference in visit "
-                    "intent by device. Untested — an A/B test on the mobile PDP settles it.",
+        rationale="Largest absolute loss sits between viewing an item and adding one, "
+                  "and it is the widest step in the funnel by a wide margin.",
+        assumptions="Assumes the loss is friction on the product page rather than "
+                    "browsing intent — many of these users never intended to buy today. "
+                    "Untested; an A/B test on the product page settles it.",
     ),
     "began_checkout": dict(
         name="Reduce cart-to-checkout friction (persistent cart, single-tap checkout entry)",
@@ -145,6 +150,10 @@ def main() -> int:
         sessions = fio.load("09_funnel_session_scoped")
     except FileNotFoundError:
         sessions = None
+    try:
+        ties = fio.load("10_timestamp_ties")
+    except FileNotFoundError:
+        ties = None
 
     # ---- 1. gates ---------------------------------------------------------------
     tables = [("overall", overall), ("device", by_device),
@@ -159,6 +168,32 @@ def main() -> int:
     print("PASS  cross-validation, timestamp method vs sequence method")
     print(xval.to_string(index=False))
     print()
+
+    # How much the strict ordering rule costs. GA4 batches events into one request and
+    # stamps them with the same microsecond, so view_item and add_to_cart tie whenever
+    # a user carts straight from a listing. Strict `>` drops those users. That is the
+    # defensible reading -- an equal timestamp is not evidence of an ordering -- but it
+    # is a choice, and an unquantified choice is an undisclosed one.
+    tie_summary = None
+    if ties is not None:
+        head = ties[ties["step"] == "viewed -> added_to_cart"]
+        if not head.empty:
+            r = head.iloc[0]
+            strict, tied = int(r["counted_strict"]), int(r["excluded_by_tie"])
+            tie_summary = {
+                "rows": ties.to_dict("records"),
+                "headline_step": str(r["step"]),
+                "counted_strict": strict,
+                "excluded_by_tie": tied,
+                "counted_at_or_after": int(r["counted_at_or_after"]),
+                "share_of_counted": tied / strict if strict else 0.0,
+            }
+            print(f"Strict-ordering cost: {tied:,} users added to cart at the identical "
+                  f"microsecond as their first view and are excluded "
+                  f"({tie_summary['share_of_counted'] * 100:.1f}% of the "
+                  f"{strict:,} counted). GA4 batches both events into one request. "
+                  f"Under `>=` the stage would read "
+                  f"{tie_summary['counted_at_or_after']:,}.\n")
 
     # ---- 2. headline funnel ------------------------------------------------------
     row = overall.iloc[0]
@@ -208,31 +243,34 @@ def main() -> int:
     # what matters, not the per-test alpha. Holm-Bonferroni is applied across all of
     # them and the corrected verdict is the one that gets quoted anywhere.
     from funnelscope.stats import ProportionTest, correct_family
-    tests = []
 
+    def pair(kind: str, a: pd.Series, b: pd.Series) -> dict:
+        """One comparison, carrying the rows it came from so the gap can be sized later."""
+        return {
+            "kind": kind,
+            "test": ProportionTest(str(a["segment_value"]), str(b["segment_value"]),
+                                   int(a["purchased"]), int(a["viewed"]),
+                                   int(b["purchased"]), int(b["viewed"])),
+            "rows": (a, b),
+        }
+
+    comparisons = []
     dev = by_device.sort_values("viewed", ascending=False)
     if len(dev) >= 2:
-        a, b = dev.iloc[0], dev.iloc[1]
-        tests.append(ProportionTest(str(a["segment_value"]), str(b["segment_value"]),
-                                    int(a["purchased"]), int(a["viewed"]),
-                                    int(b["purchased"]), int(b["viewed"])))
+        comparisons.append(pair("device", dev.iloc[0], dev.iloc[1]))
     vis = by_visitor.sort_values("viewed", ascending=False)
     if len(vis) >= 2:
-        a, b = vis.iloc[0], vis.iloc[1]
-        tests.append(ProportionTest(str(a["segment_value"]), str(b["segment_value"]),
-                                    int(a["purchased"]), int(a["viewed"]),
-                                    int(b["purchased"]), int(b["viewed"])))
+        comparisons.append(pair("visitor type", vis.iloc[0], vis.iloc[1]))
 
     src = by_source[by_source["segment_value"] != "(long tail)"].copy()
     src["conv"] = src["purchased"] / src["viewed"]
     src = src.sort_values("viewed", ascending=False)
     if len(src) >= 2:
-        best = src.sort_values("conv", ascending=False).iloc[0]
-        worst_ch = src.sort_values("conv").iloc[0]
-        tests.append(ProportionTest(str(best["segment_value"]), str(worst_ch["segment_value"]),
-                                    int(best["purchased"]), int(best["viewed"]),
-                                    int(worst_ch["purchased"]), int(worst_ch["viewed"])))
+        comparisons.append(pair("channel",
+                                src.sort_values("conv", ascending=False).iloc[0],
+                                src.sort_values("conv").iloc[0]))
 
+    tests = [c["test"] for c in comparisons]
     corrected = correct_family(tests, alpha=0.05)
     for c in corrected:
         print(" ", c["verdict"])
@@ -243,15 +281,47 @@ def main() -> int:
     print()
 
     # ---- 5. segment gap value ----------------------------------------------------
+    # WHICH GAP LEADS THE MEMO IS DECIDED BY THE DATA, NOT BY THE TEMPLATE.
+    #
+    # An earlier version of this script always sized the device gap, because the device
+    # split is usually the largest and most actionable cut in an ecommerce funnel. On
+    # this dataset it is not even significant (3.77% vs 3.95%, p = 0.27) — so a memo
+    # built on that assumption would have led with a finding its own z-test rejects,
+    # and the fixture could never have revealed it because the fixture was generated
+    # with a device effect baked in.
+    #
+    # The headline gap is therefore the largest *significant* one, after Holm, across
+    # every segment type compared. If nothing survives the correction there is no
+    # headline gap, `gap` stays None, and the memo says so rather than inventing one.
     gap = None
-    if len(dev) >= 2:
-        lo, hi = dev.iloc[0], dev.iloc[1]
+    sized_gaps = []
+    for comparison, verdict in zip(comparisons, corrected):
+        lo, hi = comparison["rows"]
         if (lo["purchased"] / lo["viewed"]) > (hi["purchased"] / hi["viewed"]):
             lo, hi = hi, lo
-        gap = sizing.segment_gap_value(lo, hi, aov)
-        print(f"Closing the {gap['segment_a']} -> {gap['segment_b']} conversion gap "
-              f"({gap['gap_pp']:.2f}pp) would be worth ${gap['value_if_closed']:,.0f} "
-              f"in this window (upper bound).\n")
+        sized = sizing.segment_gap_value(lo, hi, aov)
+        sized["segment_type"] = comparison["kind"]
+        sized["significant"] = bool(verdict["significant_holm"])
+        sized["p_value"] = verdict["p_value"]
+        sized["p_value_adjusted"] = verdict["p_value_adjusted"]
+        sized_gaps.append(sized)
+
+    significant_gaps = [g for g in sized_gaps if g["significant"]]
+    if significant_gaps:
+        gap = max(significant_gaps, key=lambda g: g["value_if_closed"])
+        print(f"Largest gap that survives correction — {gap['segment_type']}: closing "
+              f"{gap['segment_a']} -> {gap['segment_b']} ({gap['gap_pp']:.2f}pp) would be "
+              f"worth ${gap['value_if_closed']:,.0f} in this window (upper bound).")
+        rejected = [g for g in sized_gaps if not g["significant"]]
+        if rejected:
+            print("  Not treated as findings (not distinguishable from noise): " +
+                  "; ".join(f"{g['segment_type']} {g['segment_a']} vs {g['segment_b']}, "
+                            f"{abs(g['gap_pp']):.2f}pp, p = {g['p_value']:.2f}"
+                            for g in rejected))
+        print()
+    else:
+        print("No segment gap survives the multiple-comparison correction. The memo "
+              "will say so rather than lead with one.\n")
 
     # ---- 6. retention ------------------------------------------------------------
     last_date = pd.to_datetime(fio.load("01_event_overview")["last_date"]).max()
@@ -270,13 +340,27 @@ def main() -> int:
           f"and excluded from every retention figure above.\n")
 
     # ---- 7. RICE -----------------------------------------------------------------
+    if gap:
+        segment_note = (
+            f" The {gap['segment_type']} split narrows where to start: "
+            f"{gap['segment_a']} converts {abs(gap['gap_pp']):.2f}pp below "
+            f"{gap['segment_b']}, which survives correction.")
+    else:
+        segment_note = (
+            " No segment cut separates this loss further — every comparison run here "
+            "is within noise after correction, so the fix is a whole-funnel one rather "
+            "than a targeted one.")
+
     recs = []
     for _, o in opportunities.iterrows():
         spec = INTERVENTION_CATALOG.get(o["to_stage"])
         if not spec:
             continue
+        rationale = spec["rationale"]
+        if o["to_stage"] == "added_to_cart":
+            rationale += segment_note
         recs.append(rice.Recommendation(
-            name=spec["name"], rationale=spec["rationale"],
+            name=spec["name"], rationale=rationale,
             reach=float(o["users_lost"]), impact=spec["impact"],
             confidence=spec["confidence"], effort=spec["effort"],
             evidence=(f"{int(o['users_lost']):,} users lost at this step; "
@@ -313,6 +397,7 @@ def main() -> int:
         "validation": {
             "monotonic": True,
             "cross_validation": xval.to_dict("records"),
+            "timestamp_ties": tie_summary,
         },
         "funnel": {s: int(row[s]) for s in FUNNEL_STAGES}
         | {
@@ -342,6 +427,7 @@ def main() -> int:
         },
         "scope_comparison": scope_gap,
         "segment_gap": gap,
+        "segment_gaps_all": sized_gaps,
         "segments": {
             "device": by_device.to_dict("records"),
             "source": by_source.to_dict("records"),

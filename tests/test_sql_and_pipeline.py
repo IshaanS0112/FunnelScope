@@ -74,8 +74,44 @@ def test_sql_parses_as_bigquery():
         sqlglot.parse_one(text, dialect="bigquery")
 
 
+@pytest.fixture
+def preserve_artifacts():
+    """Snapshot and restore everything the pipeline writes.
+
+    The end-to-end test runs make_fixture.py, which overwrites data/processed/ — so
+    without this, running the test suite silently replaces a real BigQuery export with
+    synthetic data, and the next commit ships fixture numbers with a real-data manifest.
+    That is exactly the provenance failure the manifest exists to prevent, arriving
+    through the back door.
+
+    Snapshot-and-restore rather than redirecting the paths: it needs no indirection in
+    the scripts, and it covers every artifact they touch rather than the ones a path
+    override happened to reach.
+    """
+    targets = [REPO_ROOT / "data" / "processed", REPO_ROOT / "docs" / "MEMO.md",
+               REPO_ROOT / "web" / "data.js"]
+    saved = {}
+    for path in targets:
+        if path.is_dir():
+            saved[path] = {f: f.read_bytes() for f in path.iterdir() if f.is_file()}
+        elif path.exists():
+            saved[path] = path.read_bytes()
+    try:
+        yield
+    finally:
+        for path, blob in saved.items():
+            if isinstance(blob, dict):
+                for f in path.iterdir():
+                    if f.is_file() and f not in blob:
+                        f.unlink()
+                for f, data in blob.items():
+                    f.write_bytes(data)
+            else:
+                path.write_bytes(blob)
+
+
 @pytest.mark.slow
-def test_pipeline_runs_end_to_end(tmp_path):
+def test_pipeline_runs_end_to_end(tmp_path, preserve_artifacts):
     """fixture -> analyze -> memo -> site, as a subprocess chain, exactly as a user
     would run it. Chained as subprocesses rather than function calls so an import-time
     or CLI regression is caught too."""

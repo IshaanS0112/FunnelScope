@@ -54,20 +54,39 @@
     <details id="xval-block">
       <summary>Correctness gate — the funnel computed twice, by unrelated methods</summary>
       <p class="note">
-        Method A takes each user's first-occurrence timestamps and compares them. Method B
-        collapses each user's events into an ordered string (<code>V</code>, <code>C</code>,
-        <code>K</code>, <code>P</code>) and matches a sequence regex. The two share no logic
-        beyond the source table, so agreement is evidence rather than a tautology — an error
-        in timestamp comparison cannot hide inside regex matching.
+        Method A takes each user's first-occurrence timestamps and compares them with
+        cumulative predicates. Method B collapses those first occurrences into an ordered
+        string (<code>V</code>, <code>C</code>, <code>K</code>, <code>P</code>) and matches
+        a sequence regex. The funnel logic is independent, so a stage predicate that is not
+        cumulative cannot survive the comparison.
       </p>
       <p class="note">
         <strong>The pipeline refuses to emit metrics if they diverge by more than 0.5%</strong>,
-        so this page cannot exist for a funnel that failed validation. The only tolerated
-        drift is users with two funnel events at the identical microsecond: method A uses
-        strict <code>&gt;</code> and drops them, method B keeps whatever order
-        <code>STRING_AGG</code> emits.
+        so this page cannot exist for a funnel that failed validation.
       </p>
       <div class="table-scroll" id="xval-table"></div>
+      <p class="note">
+        <strong>This gate fired on the first real export, by 17%, and it was right to.</strong>
+        Neither query had a bug — they were answering different questions, and the synthetic
+        fixture could not reveal it because every simulated user did each step once at a
+        distinct timestamp. Two causes, both specific to real GA4 data:
+      </p>
+      <p class="note">
+        <strong>Repeat events.</strong> A regex over <em>every</em> event asks "did this user
+        ever cart after ever viewing"; the funnel asks "did the first cart follow the first
+        view". Users repeat constantly here — 6.3 <code>view_item</code> events per user and
+        4.67 <code>add_to_cart</code> per carting user — and one pattern alone (carted,
+        browsed more, carted again) accounted for 938 extra users.
+      </p>
+      <p class="note">
+        <strong>Batched timestamps.</strong> GA4 stamps every event in one network request
+        with the same <code>event_timestamp</code>, so carting from a product listing ties
+        exactly with the view. Method A's strict <code>&gt;</code> drops those users;
+        <code>STRING_AGG</code> ordered only by time kept about half of them. Method B now
+        orders by <code>first_ts, stage_rank DESC</code>, so a tie reads <code>CV</code> and
+        fails the regex — precisely what <code>cart_ts &gt; view_ts</code> does.
+      </p>
+      <div id="tie-block"></div>
     </details>
   </section>
 
@@ -250,12 +269,13 @@ data/processed/metrics.json  every number quoted anywhere
       <h3 style="margin-top:0">What this data cannot tell you</h3>
       <p class="note">
         It records <strong>what</strong> users did and is silent on <strong>why</strong>.
-        The largest single threat to the headline finding is that
+        The largest single threat to any segment finding is that
         <code>user_pseudo_id</code> is per browser, not per person: someone who browses on a
-        phone and buys on a laptop appears as two users, one of whom never converts. That
-        inflates the measured device gap by an unknown amount. Next steps that would settle
-        it: session recordings on the weakest device's product page, a cart-abandonment exit
-        survey, and an A/B test on the top recommendation.
+        phone and buys on a laptop appears as two users, one of whom never converts — and a
+        returning user on a second device looks new. That distorts every comparison on this
+        page by an unknown amount. Next steps that would settle it: session recordings on
+        the weaker cohort, a cart-abandonment exit survey, and an A/B test on the top
+        recommendation.
       </p>
       <p class="note">
         This is Google's public obfuscated GA4 sample export — a demo dataset, not a
