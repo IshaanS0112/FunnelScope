@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""Turn the exported CSVs into every number the memo and the dashboard quote.
+"""Turn the exported CSVs into every number the memo and the dashboards quote.
 
-Order of operations matters here. The correctness gates run FIRST and raise on
-failure, so it is not possible to produce a metrics file — and therefore a memo —
-from a funnel that failed validation.
+The correctness gates run FIRST and raise, so a metrics file — and therefore a memo —
+cannot be produced from a funnel that failed validation.
 
-    1. monotonicity check on every funnel table
+    1. monotonicity on every funnel table
     2. cross-validation of method A against method B
-    3. user-scoped vs session-scoped funnel comparison
-    4. rates, segment cuts, significance tests with Holm-Bonferroni correction
-    5. opportunity sizing + sensitivity sweep + bootstrap intervals
+    3. user-scoped vs session-scoped comparison
+    4. segment cuts, z-tests, Holm-Bonferroni correction
+    5. sizing, sensitivity sweep, bootstrap intervals
     6. retention with censoring marked
-    7. RICE ranking, reach measured from the data
-    8. diff against the previous export, so a broken re-run is visible immediately
+    7. RICE ranking
+    8. diff against the previous export
     -> data/processed/metrics.json
 
 Usage:  python scripts/analyze.py
@@ -33,15 +32,11 @@ from funnelscope import FUNNEL_STAGES, STAGE_LABELS, funnel, io as fio, retentio
 
 METRICS_PATH = fio.PROCESSED_DIR / "metrics.json"
 
-# Candidate interventions. Reach is measured from the data at scoring time; impact,
-# effort and confidence are judgement, stated here so a reader can disagree with a
-# specific number rather than with the ranking as a whole.
+# Reach is measured at scoring time; impact, effort and confidence are judgement, stated
+# here so a reader can disagree with one number rather than with the whole ranking.
+# The segment evidence is appended at scoring time from whichever gap survives
+# correction — hardcoding it would assert findings the z-test may reject.
 INTERVENTION_CATALOG = {
-    # NOTE: this entry used to name the device split as its evidence ("rework the
-    # add-to-cart path on the weakest device"). On the real GA4 export the device gap is
-    # not significant, so that rationale asserted a finding this pipeline's own z-test
-    # rejects. The claim is now built at scoring time from whichever segment gap
-    # actually survives correction, and says so plainly when none does.
     "added_to_cart": dict(
         name="Rework the product page add-to-cart path",
         impact=rice.IMPACT_SCALE["high"], confidence=0.7, effort=3.0,
@@ -84,11 +79,9 @@ def _row(df: pd.DataFrame, value: str) -> pd.Series:
 
 
 def _headline_scalars(m: dict) -> dict:
-    """The handful of numbers whose movement between exports is worth reporting.
+    """The few numbers whose movement between exports is worth reporting.
 
-    Deliberately small. A diff over every field in metrics.json would be dominated by
-    floating-point noise and by fields that move for uninteresting reasons; the point of
-    the comparison is to catch a query that broke or a window that shifted.
+    Deliberately small: a diff over every field would drown in floating-point noise.
     """
     out = {}
     for s in FUNNEL_STAGES:
@@ -106,12 +99,10 @@ def _headline_scalars(m: dict) -> dict:
 
 
 def reexport_diff(new: dict, previous: dict | None) -> list[dict]:
-    """What moved since the last export, as a list of changed headline scalars.
+    """What moved since the last export.
 
-    A pipeline that silently produces different numbers on a re-run is the failure mode
-    this catches: a query edited by hand, a window quietly widened, a segment that
-    vanished because a source stopped firing. Printing the movement makes a broken
-    re-export obvious at the moment it happens rather than three artifacts later.
+    Catches a query edited by hand, a window quietly widened, or a channel that stopped
+    firing — at the moment it happens rather than three artifacts later.
     """
     if not previous:
         return []
@@ -155,7 +146,7 @@ def main() -> int:
     except FileNotFoundError:
         ties = None
 
-    # ---- 1. gates ---------------------------------------------------------------
+    # ---- 1. gates ----------------------------------------------------------------
     tables = [("overall", overall), ("device", by_device),
               ("source", by_source), ("visitor", by_visitor)]
     if sessions is not None:
@@ -169,11 +160,9 @@ def main() -> int:
     print(xval.to_string(index=False))
     print()
 
-    # How much the strict ordering rule costs. GA4 batches events into one request and
-    # stamps them with the same microsecond, so view_item and add_to_cart tie whenever
-    # a user carts straight from a listing. Strict `>` drops those users. That is the
-    # defensible reading -- an equal timestamp is not evidence of an ordering -- but it
-    # is a choice, and an unquantified choice is an undisclosed one.
+    # What the strict ordering rule costs. GA4 batches events into one request and
+    # stamps them with the same microsecond, so view_item and add_to_cart tie when a
+    # user carts from a listing. An unquantified conservative choice is an undisclosed one.
     tie_summary = None
     if ties is not None:
         head = ties[ties["step"] == "viewed -> added_to_cart"]
@@ -239,13 +228,12 @@ def main() -> int:
     print()
 
     # ---- 4. significance ---------------------------------------------------------
-    # Every comparison below belongs to ONE family, so the family-wise error rate is
-    # what matters, not the per-test alpha. Holm-Bonferroni is applied across all of
-    # them and the corrected verdict is the one that gets quoted anywhere.
+    # Every comparison below is ONE family, so the family-wise error rate is what
+    # matters. The Holm-corrected verdict is the one quoted anywhere.
     from funnelscope.stats import ProportionTest, correct_family
 
     def pair(kind: str, a: pd.Series, b: pd.Series) -> dict:
-        """One comparison, carrying the rows it came from so the gap can be sized later."""
+        """One comparison, carrying its rows so the gap can be sized later."""
         return {
             "kind": kind,
             "test": ProportionTest(str(a["segment_value"]), str(b["segment_value"]),
@@ -281,18 +269,9 @@ def main() -> int:
     print()
 
     # ---- 5. segment gap value ----------------------------------------------------
-    # WHICH GAP LEADS THE MEMO IS DECIDED BY THE DATA, NOT BY THE TEMPLATE.
-    #
-    # An earlier version of this script always sized the device gap, because the device
-    # split is usually the largest and most actionable cut in an ecommerce funnel. On
-    # this dataset it is not even significant (3.77% vs 3.95%, p = 0.27) — so a memo
-    # built on that assumption would have led with a finding its own z-test rejects,
-    # and the fixture could never have revealed it because the fixture was generated
-    # with a device effect baked in.
-    #
-    # The headline gap is therefore the largest *significant* one, after Holm, across
-    # every segment type compared. If nothing survives the correction there is no
-    # headline gap, `gap` stays None, and the memo says so rather than inventing one.
+    # The data picks the headline gap, not the template: the largest gap surviving Holm
+    # across every segment type. If none survives, `gap` stays None and the memo says
+    # so. (On the real export the device gap is NOT significant, p = 0.27.)
     gap = None
     sized_gaps = []
     for comparison, verdict in zip(comparisons, corrected):
@@ -325,8 +304,8 @@ def main() -> int:
 
     # ---- 6. retention ------------------------------------------------------------
     last_date = pd.to_datetime(fio.load("01_event_overview")["last_date"]).max()
-    # Densify BEFORE censoring: the query emits no row for a week with no returners,
-    # so without this a zero cell and an unobservable cell look identical.
+    # Densify BEFORE censoring: no row is emitted for a week with no returners, so
+    # without this a zero cell and an unobservable cell look identical.
     coh = retention.mark_censored(retention.densify(cohorts, last_date), last_date)
     curve = retention.average_curve(coh)
     censoring = retention.censoring_summary(coh)

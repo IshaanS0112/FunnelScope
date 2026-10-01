@@ -8,50 +8,25 @@
 -- Output:   data/processed/02b_funnel_validation.csv
 -- Est. scan: ~0.2 GB
 --
--- WHY `first_events` EXISTS, AND WHY THIS QUERY ORIGINALLY DISAGREED BY 17%:
---   The obvious form of this query aggregates EVERY event into the sequence:
+-- WHY first_events, AND WHY THE TIE-BREAK IS stage_rank DESC:
+--   Aggregating EVERY event into the sequence asks "did this user EVER cart after EVER
+--   viewing", while 02 asks "did the FIRST cart follow the FIRST view". Those differ
+--   whenever a user repeats a step, and in this dataset they repeat constantly
+--   (6.3 view_item per user, 4.67 add_to_cart per carting user). Measured on the real
+--   export, the all-events form ran 9.6% / 16.2% / 17.3% above 02.
 --
---     STRING_AGG(CASE event_name ... END, '' ORDER BY event_timestamp)
+--   GA4 also stamps every event in one network request with the same event_timestamp,
+--   so carting straight from a listing ties with the view: 1,422 users, 11.3% of
+--   carters. 02's strict `>` drops them; STRING_AGG ordered only by time keeps about
+--   half, which left a further 6.7% gap. Ordering by (first_ts, stage_rank DESC) emits
+--   the later stage first on a tie, so the regex fails — exactly what `>` does.
 --
---   That looks like the same funnel and is not. `REGEXP_CONTAINS(seq, r'V.*C')` then
---   asks "did this user EVER add to cart after EVER viewing an item", whereas 02 asks
---   "did this user's FIRST cart follow their FIRST view". Those differ whenever a user
---   repeats a step, and in this dataset they repeat constantly: 6.3 view_item events
---   per user, and 4.67 add_to_cart events per user who carts at all.
+--   Both fixes together bring the two methods to zero difference. The check is slightly
+--   weaker for it (both read MIN(event_timestamp)) but it is correct, and a predicate
+--   that is not cumulative still cannot survive a sequence regex. A gate comparing two
+--   different definitions is not a stronger gate.
 --
---   Measured on the real export, the all-events form counted 938 extra users at the
---   cart stage from one pattern alone — carted, then browsed more, then carted again —
---   and ran 9.6% / 16.2% / 17.3% above 02 across the three lower stages. The
---   cross-validation gate in scripts/analyze.py refused to emit metrics, correctly:
---   two numbers that measure different things must not be presented as agreement.
---
---   Restricting to first occurrences makes both queries answer the same question. The
---   check is slightly weaker for it — both now read MIN(event_timestamp) — but the
---   funnel logic on top is still wholly independent, and the bug this gate exists to
---   catch (stage predicates that are not cumulative) still cannot survive it. A gate
---   that compares two different definitions is not a stronger gate; it is a broken one.
---
--- WHY THE TIE-BREAK IS `stage_rank DESC`, AND WHY IT IS NOT A FUDGE:
---   02 requires each step to be STRICTLY later than the last (`cart_ts > view_ts`), so
---   two events at the identical microsecond do not advance the funnel. `STRING_AGG`
---   has no such rule — on a tie it emits whatever order it likes, and about half the
---   time that order spells 'VC' and matches.
---
---   That is not a rounding difference on this dataset. GA4 stamps every event in one
---   network request with the same `event_timestamp`, and adding to cart straight from
---   a product listing sends `view_item` and `add_to_cart` together: 1,422 users on the
---   real export share a microsecond across those two events, 11.3% of everyone who
---   carts. Left arbitrary, the two methods differed by 6.7% at the cart stage — all of
---   it ties, none of it a bug.
---
---   Ordering by `first_ts` and then by stage rank DESCENDING reproduces 02's rule
---   exactly: on a tie the later stage is emitted first, so the sequence reads 'CV',
---   the regex does not match, and the user is not counted — which is precisely what
---   `cart_ts > view_ts` does. The two methods now answer the same question under the
---   same tie rule, so any remaining disagreement is a genuine defect.
---
---   sql/10_timestamp_ties.sql measures how many users this excludes, because a
---   conservative choice that is not quantified is just an undisclosed one.
+--   sql/10_timestamp_ties.sql measures how many users the strict rule excludes.
 
 WITH first_events AS (
   SELECT

@@ -5,14 +5,12 @@
 -- Output:   data/processed/02_funnel_overall.csv
 -- Est. scan: ~0.5 GB
 --
--- WHY CUMULATIVE PREDICATES (this is the subtle part):
+-- WHY CUMULATIVE PREDICATES:
 --   The naive form writes each stage independently, e.g. COUNTIF(checkout_ts > cart_ts).
---   That is wrong. It counts a user who began checkout after adding to cart even if that
---   user never satisfied cart_ts > view_ts. Stages then stop being nested subsets and the
---   funnel is no longer guaranteed monotonic. Each stage below re-asserts every prior
---   condition, so stage N is always a strict subset of stage N-1.
---   Cross-checked by 02b_funnel_validation.sql, which computes the same numbers with a
---   completely different technique (event-sequence regex).
+--   That counts a user who began checkout after adding to cart even if their cart never
+--   followed their view. Stages stop being nested subsets and the funnel can go
+--   non-monotonic. Each stage below re-asserts every prior condition.
+--   Cross-checked by 02b_funnel_validation.sql via a completely different technique.
 
 WITH user_journey AS (
   SELECT

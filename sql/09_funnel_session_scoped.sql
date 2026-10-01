@@ -8,23 +8,15 @@
 -- Est. scan: ~0.9 GB  (adds event_params for ga_session_id, which is not a cheap column)
 --
 -- WHY BOTH FUNNELS EXIST, and why neither is "the correct one":
---   02 answers "does this user EVER get there", which is the right frame for deciding
---   what to fix in the product -- a user who returns three days later and buys was not
---   lost, and counting them as lost would send you chasing a drop-off that isn't one.
---   This query answers "does this VISIT complete", which is the right frame for judging
---   a landing experience or a single campaign, where a user who leaves and comes back
---   a week later is, for that campaign's purposes, a failure.
+--   02 answers "does this user EVER get there", the right frame for deciding what to fix
+--   in the product — a user who returns three days later and buys was not lost. This
+--   query answers "does this VISIT complete", the right frame for judging a landing
+--   experience or a campaign.
 --
 --   THE COMPARISON IS THE FINDING. Session-scoped conversion is necessarily <= the
---   user-scoped figure (a user converts if ANY of their sessions does, so collapsing
---   sessions to users can only add conversions). The size of the gap is a direct
---   measure of how much of this funnel runs on return visits. A small gap means the
---   journey completes in one sitting and session-level fixes are the whole game; a
---   large gap means retention and re-engagement are doing much of the selling, and a
---   single-session optimisation would be attacking the wrong surface.
---
---   funnelscope.funnel.session_gap computes that comparison; scripts/analyze.py records
---   it in metrics.json and the memo quotes it.
+--   user-scoped figure, and the size of the gap measures how much of the funnel runs on
+--   return visits. A large gap means a single-session optimisation attacks the wrong
+--   surface. funnelscope.funnel.session_gap computes it and asserts the inequality.
 
 WITH session_journey AS (
   SELECT

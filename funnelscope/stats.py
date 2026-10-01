@@ -1,8 +1,9 @@
 """Significance testing for segment comparisons.
 
-A two-proportion z-test is the whole content of this module, but it is the piece most
-portfolio funnel analyses omit, and omitting it is what lets a 0.3pp difference get
-written up as a finding.
+Pooled two-proportion z-test, unpooled Wald interval on the difference, two-sided at
+alpha = 0.05, with Holm-Bonferroni applied across the comparison family. Implemented
+against math.erfc so the runtime needs no SciPy; the test suite cross-checks both
+against scipy and statsmodels.
 """
 
 from __future__ import annotations
@@ -10,9 +11,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-# Normal CDF via the error function -- avoids a SciPy dependency for one lookup.
 def _norm_sf(z: float) -> float:
-    """Upper-tail probability of the standard normal."""
+    """Upper-tail probability of the standard normal, via math.erfc."""
     return 0.5 * math.erfc(z / math.sqrt(2.0))
 
 
@@ -68,7 +68,7 @@ class ProportionTest:
         return (d - z_crit * se, d + z_crit * se)
 
     def verdict(self) -> str:
-        """One sentence, written the way it would appear in the memo."""
+        """One sentence, as it would appear in the memo."""
         lo, hi = self.confidence_interval()
         direction = "higher" if self.difference > 0 else "lower"
         if self.significant:
@@ -102,28 +102,17 @@ class ProportionTest:
         }
 
 
-# ---------------------------------------------------------------------------
-# Multiple comparisons
-# ---------------------------------------------------------------------------
-# Running several segment comparisons at alpha = 0.05 each does not hold the
-# family-wise error rate at 0.05. With m independent tests the probability of at
-# least one false positive is 1 - (1 - alpha)^m: four comparisons is already 18.5%.
-# An analysis that cuts a funnel four ways and reports whatever came back significant
-# is therefore manufacturing findings at a rate it has not disclosed.
-#
-# Holm-Bonferroni is used rather than plain Bonferroni because it is uniformly more
-# powerful and costs nothing: same assumptions, same guarantee, strictly more rejections.
+# m tests at alpha each gives a family-wise error rate of 1 - (1 - alpha)^m: four
+# comparisons is already 18.5%. Holm over plain Bonferroni because it is uniformly more
+# powerful under the same assumptions.
 
 def holm_bonferroni(p_values: list[float], alpha: float = 0.05) -> list[bool]:
-    """Holm-Bonferroni step-down. Returns one reject/keep decision per input p-value.
+    """Holm-Bonferroni step-down: one reject/keep decision per input p-value.
 
-    Sort the p-values ascending. The k-th smallest is compared against
-    `alpha / (m - k)`. The procedure stops at the first failure: every remaining
-    hypothesis is retained, whatever its own p-value. That step-down stop is the
-    whole difference from Bonferroni, and forgetting it is the usual implementation
-    bug -- it turns a valid procedure into an invalid, more powerful one.
-
-    Results are returned in the caller's original order, not in sorted order.
+    The k-th smallest p-value faces alpha/(m-k), and the procedure STOPS at the first
+    failure — every remaining hypothesis is retained whatever its own p-value. That
+    stop is the whole difference from Bonferroni; dropping it makes the procedure
+    invalid. Results come back in the caller's order.
     """
     m = len(p_values)
     if not m:
@@ -139,12 +128,8 @@ def holm_bonferroni(p_values: list[float], alpha: float = 0.05) -> list[bool]:
 
 
 def adjusted_p_values(p_values: list[float]) -> list[float]:
-    """Holm-adjusted p-values: `min(1, max over the step-down prefix of (m-k) * p_k)`.
-
-    The running maximum enforces monotonicity -- an adjusted p-value can never be
-    smaller than that of a more significant hypothesis. Reporting these alongside the
-    raw values lets a reader see exactly how much the correction cost, which is the
-    honest way to present it.
+    """Holm-adjusted p-values. The running maximum enforces monotonicity: an adjusted
+    p-value can never fall below that of a more significant hypothesis.
     """
     m = len(p_values)
     if not m:
@@ -159,10 +144,9 @@ def adjusted_p_values(p_values: list[float]) -> list[float]:
 
 
 def correct_family(tests: list[ProportionTest], alpha: float = 0.05) -> list[dict]:
-    """Apply Holm across a family of comparisons and return them fully annotated.
+    """Apply Holm across a family of comparisons, annotated.
 
-    Every comparison the pipeline runs belongs to one family. The corrected verdict,
-    not the raw one, is what the memo is allowed to quote.
+    The corrected verdict, not the raw one, is what the memo may quote.
     """
     raw = [t.p_value for t in tests]
     rejects = holm_bonferroni(raw, alpha)
@@ -173,7 +157,7 @@ def correct_family(tests: list[ProportionTest], alpha: float = 0.05) -> list[dic
         d["p_value_adjusted"] = adj
         d["significant_raw"] = d["significant"]
         d["significant_holm"] = bool(rej)
-        d["significant"] = bool(rej)          # the corrected verdict is THE verdict
+        d["significant"] = bool(rej)  # corrected verdict wins
         d["family_size"] = len(tests)
         d["correction"] = "Holm-Bonferroni"
         if d["significant_raw"] and not rej:

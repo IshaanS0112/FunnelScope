@@ -1,73 +1,17 @@
-"""Opportunity sizing: converting a drop-off into a defensible revenue number.
+"""Opportunity sizing: turning a drop-off into a revenue figure.
 
-The model, stated plainly so it can be argued with:
+    users_recovered(S, x) = min(users_entering_S * x, users_lost_at_S)
+    recoverable(S, x)     = users_recovered * P(purchase | completed S) * AOV
 
-    users_recovered(S, x) = min(users_entering_S x x, users_lost_at_S)
-    recoverable(S, x)     = users_recovered x P(purchase | completed S) x AOV
+Every figure is an UPPER BOUND: it applies the purchase rate of users who completed a
+stage to users who did not. Two corrections to the textbook form, both derived in
+docs/methodology.md:
 
-Each term is an assumption, and each is wrong in a knowable direction:
-
-  * users_entering_S / users_lost_at_S -- measured, not assumed.
-  * x (improvement)          -- chosen, not derived. There is no engineering estimate
-                                behind it. It is a sensitivity input, which is why
-                                `sensitivity_table` sweeps it rather than fixing a value.
-  * P(purchase | completed)  -- measured on users who DID complete the stage. Applying
-                                it to users who did not is the load-bearing assumption
-                                of the whole model: it treats recovered users as
-                                behaving like already-converting users. They almost
-                                certainly convert worse. Every figure here is an
-                                UPPER BOUND, and should be presented as one.
-  * AOV                      -- transaction-weighted from actual purchase revenue.
-
-TWO THINGS THIS MODULE GETS RIGHT THAT THE STANDARD FORMULATION DOES NOT
------------------------------------------------------------------------
-
-**1. `users_lost x x` is the wrong denominator.**
-The usual write-up is `users_lost x improvement_pp x downstream x AOV`. But a
-percentage-point improvement is a change in the stage's *conversion rate*, and that
-rate's denominator is users *entering*, not users *lost*. Raising a 30% step to 35%
-recovers `users_entering x 0.05`, not `users_lost x 0.05`.
-
-How far apart are they? Work it through rather than asserting a number:
-
-    lost           = entering x (1 - rate)
-    lost_basis     = entering x (1 - rate) x pp
-    entering_basis = entering x pp
-    lost_basis / entering_basis = (1 - rate)
-
-So the `users_lost` form is only `(1 - rate)` of the correct figure -- **30% short at
-a 30% step, half at a 50% step** -- and correcting it means multiplying by
-`1 / (1 - rate)`, which is **1.43x at a 30% step**. Those are two different numbers
-(0.70 vs 1.43) and conflating them is easy: an earlier draft of this module called the
-lost-basis figure "43% too low", which is the correction factor misread as the error.
-It is 30% short; the correction is 1.43x.
-
-`basis="lost"` is available for the other reading ("we recover x of the users we
-lose"), but it is a different claim and is labelled as one.
-
-**2. This model cannot re-rank the stages, and pretending otherwise is a mistake.**
-A common claim about opportunity sizing is that the stage with the largest absolute
-recoverable revenue is usually *not* the stage with the worst percentage drop-off, and
-that the gap between the two is the interesting finding. In a strictly ordered funnel
-that gap cannot exist. Every purchaser passed through every stage, so
-
-    P(purchase | completed stage j) = total_purchases / count_j
-
-with `total_purchases` constant across stages. Therefore
-
-    recoverable_i  proportional to  count_i / count_j  =  1 / step_conversion_i
-
-which is strictly monotone in the step conversion rate. Ranking by recoverable revenue
-and ranking by worst step conversion are the *same ordering*, necessarily, for every
-funnel. `ranking_matches_step_conversion()` asserts this, and a test in
-tests/test_sizing_and_rice.py checks it over thousands of random funnels.
-
-So what is sizing for? Two things, neither of which is re-ranking stages:
-  * it converts a rate into a currency figure that can be weighed against *effort*,
-    which is where the real re-ranking happens (see funnelscope/rice.py); and
-  * across *segments* at the same stage it does carry independent information, because
-    traffic volume and downstream conversion vary between segments in ways step
-    conversion alone does not capture. `segment_gap_value` is where that lives.
+  1. A percentage-point lift applies to users ENTERING, not users LOST. The lost-basis
+     form is only (1 - rate) of the correct figure.
+  2. This model cannot re-rank the stages. Recoverable revenue is a monotone function of
+     step conversion, so ranking by dollars and by worst drop-off are the same ordering.
+     ranking_matches_step_conversion() asserts it; a property test checks it.
 """
 
 from __future__ import annotations
@@ -108,16 +52,11 @@ def downstream_conversion(row: pd.Series, stage: str) -> float:
 
 def size_stage(row: pd.Series, t: StageTransition, aov: float,
                improvement_pp: float = 0.05, basis: str = "entering") -> Opportunity:
-    """Size one transition.
+    """Size one transition. `improvement_pp` is a fraction (0.05 = 5pp).
 
-    `improvement_pp` is a fraction (0.05 = 5 percentage points).
-    `basis` selects what those percentage points apply to:
-      "entering" -- the stage's conversion rate rises by `improvement_pp`. Correct
-                    reading of "improve stage S conversion by X pp". Default.
-      "lost"     -- `improvement_pp` of the users lost at this stage are recovered.
-                    A different, weaker claim. Available for comparison, labelled.
-    Recovery is capped at the number of users actually lost: you cannot recover more
-    users than left.
+    basis="entering" raises the stage's conversion rate by improvement_pp (the correct
+    reading). basis="lost" recovers that share of the users lost — a weaker, different
+    claim, kept for comparison. Recovery is capped at the users actually lost.
     """
     if basis not in ("entering", "lost"):
         raise ValueError(f"basis must be 'entering' or 'lost', got {basis!r}")
@@ -153,8 +92,7 @@ def sensitivity_table(row: pd.Series, aov: float,
                       improvements=(0.01, 0.02, 0.05, 0.10)) -> pd.DataFrame:
     """Recoverable revenue per stage across a sweep of improvement assumptions.
 
-    Publishing the sweep instead of one number is the point: it shows the ranking of
-    stages is stable even though the absolute figures are not.
+    The absolute figures move; the ranking does not. That stability is the claim.
     """
     frames = []
     for pp in improvements:
@@ -173,10 +111,9 @@ def aov_from_revenue(revenue_df: pd.DataFrame) -> float:
 
 
 def segment_gap_value(row_a: pd.Series, row_b: pd.Series, aov: float) -> dict:
-    """What closing the end-to-end conversion gap between two segments would be worth.
+    """Worth of closing the conversion gap between two segments.
 
-    Counterfactual: segment A converts at segment B's rate, holding A's traffic fixed.
-    Also an upper bound, and for the same reason as above.
+    Counterfactual: A converts at B's rate on A's traffic. Also an upper bound.
     """
     conv_a = float(row_a["purchased"]) / float(row_a["viewed"]) if row_a["viewed"] else 0.0
     conv_b = float(row_b["purchased"]) / float(row_b["viewed"]) if row_b["viewed"] else 0.0
@@ -195,11 +132,10 @@ def segment_gap_value(row_a: pd.Series, row_b: pd.Series, aov: float) -> dict:
 
 def ranking_matches_step_conversion(row: pd.Series, aov: float = 1.0,
                                     improvement_pp: float = 0.05) -> bool:
-    """True when ranking stages by recoverable revenue equals ranking by worst step rate.
+    """True when ranking by recoverable revenue equals ranking by worst step rate.
 
-    Proved above to hold for every strictly ordered funnel. Exposed as a callable so the
-    property is asserted by the test suite rather than only asserted in a docstring, and
-    so a future change to the model that breaks the equivalence fails loudly.
+    Holds for every strictly ordered funnel. Exposed so a model change that breaks the
+    equivalence fails a test instead of quietly manufacturing a finding.
     """
     sized = size_all_stages(row, aov, improvement_pp)
     by_revenue = list(sized.sort_values("recoverable_revenue", ascending=False)["to_stage"])
@@ -207,36 +143,19 @@ def ranking_matches_step_conversion(row: pd.Series, aov: float = 1.0,
     return by_revenue == by_rate
 
 
-# ---------------------------------------------------------------------------
-# Uncertainty on the sizing figures
-# ---------------------------------------------------------------------------
-
 def bootstrap_recoverable(row: pd.Series, aov: float, improvement_pp: float = 0.05,
                           basis: str = "entering", n_resamples: int = 2_000,
                           seed: int = 20201101,
                           confidence: float = 0.95) -> pd.DataFrame:
     """Percentile confidence intervals on recoverable revenue, per stage.
 
-    "$X recoverable" invites a reader to treat X as precise. It is not, and this
-    quantifies one of the reasons why.
+    Parametric bootstrap over the funnel's nested binomials — the per-user rows never
+    leave BigQuery, so a nonparametric resample is not available downstream.
 
-    METHOD. The funnel is a chain of nested binomials: of `viewed` users, `added_to_cart`
-    continued; of those, `began_checkout` continued; and so on. Each resample redraws
-    that chain from the observed step rates, then re-runs the full sizing model on the
-    redrawn counts. The interval is the 2.5th-97.5th percentile of the resulting
-    recoverable-revenue distribution. This is a parametric bootstrap, used because the
-    export is aggregate counts -- the per-user rows never leave BigQuery -- and a
-    nonparametric resample of users is therefore not available downstream.
-
-    WHAT IT DOES NOT COVER, which matters more than what it does. This interval
-    describes sampling variation in the counts alone. It says nothing about:
-      * `improvement_pp`, which is chosen rather than measured (that is what
-        `sensitivity_table` is for); or
-      * the model's load-bearing assumption, that recovered users purchase at the rate
-        of users who completed the stage unaided. That assumption is the dominant
-        source of error and it is not random, so no resampling scheme can price it.
-    A tight interval here therefore means "the counts are large", not "the number is
-    right". Quote it with that caveat attached or not at all.
+    It prices sampling variation in the counts and nothing else: not improvement_pp
+    (chosen, not measured) and not the assumption that recovered users purchase like
+    unaided completers, which dominates the error and is not random. A tight interval
+    means the counts are large, not that the number is right.
     """
     import numpy as np
 

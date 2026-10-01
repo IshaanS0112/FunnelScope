@@ -7,20 +7,16 @@
 -- Est. scan: ~0.2 GB
 --
 -- WHY THIS QUERY EXISTS:
---   GA4 stamps every event in one network request with the same `event_timestamp`.
---   Adding to cart directly from a product listing sends `view_item` and `add_to_cart`
---   in a single request, so the two events tie. 02 requires each step to be strictly
---   later than the last, which means those users never enter the funnel at all.
+--   GA4 stamps every event in one network request with the same event_timestamp, so
+--   carting straight from a product listing ties with the view. 02 requires each step to
+--   be strictly later than the last, so those users never enter the funnel.
 --
---   That is the conservative, defensible reading — an equal timestamp is not evidence
---   of an ordering — but it is a choice, and on this dataset it is not a small one.
---   Reporting the magnitude turns it from an undisclosed assumption into a stated one,
---   and it is the honest answer to "how much of your funnel did your own ordering rule
---   throw away?"
+--   That is the conservative reading — an equal timestamp is not evidence of an ordering
+--   — but it is a choice, and on this dataset not a small one. Reporting the magnitude
+--   turns an undisclosed assumption into a stated one.
 --
---   `*_at_or_after` is what the funnel would have counted under `>=` instead of `>`.
---   It is reported for comparison and is NOT the headline number; mixing the two
---   inside one funnel would be the error.
+--   counted_at_or_after is what the funnel would read under `>=`. It is NOT the headline
+--   number; mixing the two inside one funnel would be the error.
 
 WITH per_user AS (
   SELECT

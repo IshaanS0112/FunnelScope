@@ -47,10 +47,10 @@
     "timestamp_ties": {
       "rows": [
         {
-          "step": "viewed -> added_to_cart",
-          "counted_strict": 11114,
-          "excluded_by_tie": 1422,
-          "counted_at_or_after": 12536
+          "step": "began_checkout -> purchased",
+          "counted_strict": 2356,
+          "excluded_by_tie": 0,
+          "counted_at_or_after": 2356
         },
         {
           "step": "added_to_cart -> began_checkout",
@@ -59,10 +59,10 @@
           "counted_at_or_after": 4167
         },
         {
-          "step": "began_checkout -> purchased",
-          "counted_strict": 2356,
-          "excluded_by_tie": 0,
-          "counted_at_or_after": 2356
+          "step": "viewed -> added_to_cart",
+          "counted_strict": 11114,
+          "excluded_by_tie": 1422,
+          "counted_at_or_after": 12536
         }
       ],
       "headline_step": "viewed -> added_to_cart",
@@ -613,90 +613,5 @@
       "rice_score": 199.21
     }
   ],
-  "reexport_diff": [
-    {
-      "metric": "aov",
-      "previous": 62.968606927710844,
-      "current": 63.62702037947997,
-      "change_pct": 1.0456217532730228,
-      "note": ""
-    },
-    {
-      "metric": "funnel.added_to_cart",
-      "previous": 13622,
-      "current": 11114,
-      "change_pct": -18.411393334312145,
-      "note": ""
-    },
-    {
-      "metric": "funnel.began_checkout",
-      "previous": 5993,
-      "current": 4167,
-      "change_pct": -30.468880360420492,
-      "note": ""
-    },
-    {
-      "metric": "funnel.end_to_end_conversion",
-      "previous": 0.05974025974025974,
-      "current": 0.03846405015346438,
-      "change_pct": -35.614524743113975,
-      "note": ""
-    },
-    {
-      "metric": "funnel.purchased",
-      "previous": 3542,
-      "current": 2356,
-      "change_pct": -33.483907396950876,
-      "note": ""
-    },
-    {
-      "metric": "funnel.viewed",
-      "previous": 59290,
-      "current": 61252,
-      "change_pct": 3.309158374093439,
-      "note": ""
-    },
-    {
-      "metric": "recoverable.added_to_cart",
-      "previous": 48538.15016959023,
-      "current": 41308.24629467737,
-      "change_pct": -14.895301633152252,
-      "note": ""
-    },
-    {
-      "metric": "recoverable.began_checkout",
-      "previous": 25347.74006142483,
-      "current": 19990.96544031924,
-      "change_pct": -21.133144841017746,
-      "note": ""
-    },
-    {
-      "metric": "recoverable.purchased",
-      "previous": 18868.543065888556,
-      "current": 13256.689696064654,
-      "change_pct": -29.741847848174757,
-      "note": ""
-    },
-    {
-      "metric": "retention.censored_share",
-      "previous": 0.46153846153846156,
-      "current": 0.5357142857142857,
-      "change_pct": 16.071428571428562,
-      "note": ""
-    },
-    {
-      "metric": "retention.w1",
-      "previous": 0.5848889831706973,
-      "current": 0.04267620036878679,
-      "change_pct": -92.70353834715127,
-      "note": ""
-    },
-    {
-      "metric": "retention.w4",
-      "previous": 0.08475270423281699,
-      "current": 0.01199733877212691,
-      "change_pct": -85.84429974155157,
-      "note": ""
-    }
-  ]
+  "reexport_diff": []
 }

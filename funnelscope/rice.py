@@ -1,13 +1,8 @@
-"""RICE prioritisation.
+"""RICE prioritisation: (Reach x Impact x Confidence) / Effort.
 
-RICE = (Reach x Impact x Confidence) / Effort.
-
-The scores below are not engineering estimates -- there is no engineering team attached
-to this analysis. Reach is taken from measured segment sizes so at least one term is
-grounded. Impact and Effort are judgement, Confidence reflects how much of the claim is
-measured versus assumed. The value of the framework here is that the ranking is
-reproducible from stated inputs rather than asserted, and that a reader who disagrees
-with a score can change it and see the ranking move.
+Reach is measured from the funnel. Impact, Confidence and Effort are judgement — there
+is no engineering team attached to this analysis. The value of the framework here is a
+ranking reproducible from stated inputs, not that the scores are right.
 """
 
 from __future__ import annotations
@@ -16,7 +11,7 @@ from dataclasses import dataclass, asdict
 
 import pandas as pd
 
-# Impact scale, as used by the framework's originators (Intercom).
+# Intercom's impact scale.
 IMPACT_SCALE = {"massive": 3.0, "high": 2.0, "medium": 1.0, "low": 0.5, "minimal": 0.25}
 
 

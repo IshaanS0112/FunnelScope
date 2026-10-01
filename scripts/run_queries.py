@@ -34,15 +34,12 @@ from funnelscope import io as fio  # noqa: E402
 
 DATASET = "bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"
 # BigQuery wants the wildcard suffix form; every artifact downstream wants ISO dates.
-# Keeping both here, rather than formatting at each use site, is why the memo header
-# reads "2020-11-01" and not "20201101".
 WINDOW_START = "20201101"
 WINDOW_END = "20210131"
 WINDOW_START_ISO = "2020-11-01"
 WINDOW_END_ISO = "2021-01-31"
 
-# Sample range for the event_params reference query only. event_params is by far the
-# widest column in the schema, so this one is deliberately restricted to a few days.
+# event_params is the widest column in the schema, so query 08 reads only a few days.
 SAMPLE_START = "20210125"
 SAMPLE_END = "20210131"
 
@@ -65,7 +62,7 @@ MIN_USERS_PER_CHANNEL = 500  # channels smaller than this fold into '(long tail)
 
 
 def build_params(bigquery, sql_text: str):
-    """Only bind the parameters a given query actually references."""
+    """Bind only the parameters a query actually references."""
     candidates = {
         "start_suffix":        bigquery.ScalarQueryParameter("start_suffix", "STRING", WINDOW_START),
         "end_suffix":          bigquery.ScalarQueryParameter("end_suffix", "STRING", WINDOW_END),

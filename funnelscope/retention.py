@@ -1,13 +1,9 @@
-"""Cohort retention, and the censoring correction that keeps it honest.
+"""Cohort retention, with right-censoring handled.
 
-The trap this module exists to defuse: in a fixed 3-month window, a cohort formed in
-week 10 cannot possibly show week-8 retention -- week 18 is outside the data. Plotted
-naively, those cells read as zero and the late cohorts look like a retention collapse.
-They are right-censored, not worse.
-
-Every cell is therefore tagged `censored` when the cohort's week-N observation window
-extends past the last date present in the data, and no censored cell is ever included
-in an average, a trend, or a chart.
+In a fixed window a cohort formed in week 10 cannot show week-8 retention — week 18 is
+outside the data. Plotted naively those cells read as zero and late cohorts look like a
+collapse. They are censored, not worse, so they are excluded from every average and
+chart and left blank in the heatmap.
 """
 
 from __future__ import annotations
@@ -18,23 +14,13 @@ import pandas as pd
 def densify(df: pd.DataFrame, last_date: pd.Timestamp) -> pd.DataFrame:
     """Expand the grid to the full cohort x week rectangle, filling gaps with zero.
 
-    WHY THIS HAS TO HAPPEN BEFORE CENSORING IS MARKED. The retention query joins
-    cohorts to activity, so it emits a row only where `active_users > 0`. A week in
-    which nobody from a cohort came back produces no row at all -- which makes a
-    genuinely-zero cell indistinguishable from a cell that lies outside the data.
-    Censoring can only ever be marked on rows that exist, so on a sparse grid the
-    censored share is computed over observed cells only and comes out far too low; in
-    a grid that happens to end on a week boundary it comes out as exactly zero, and
-    the whole censoring apparatus silently tests nothing.
+    Must run BEFORE censoring is marked. The query emits no row for a week nobody
+    returned, so a real zero and an unobservable cell look identical — and censoring
+    can only be marked on rows that exist. On the sparse grid the censored share comes
+    out far too low, sometimes exactly zero.
 
-    Densifying first separates the two cases properly:
-      * observable and nobody returned -> a real 0%, included in every average;
-      * not observable yet             -> censored, excluded from every average.
-
-    The horizon is set by the earliest cohort, which is the only one with a full
-    runway: weeks 0..floor((last_date - earliest_cohort_week) / 7). Later cohorts get
-    rows across that same range, and the ones past their own runway are exactly the
-    cells `mark_censored` will flag.
+    Horizon is the earliest cohort's runway; later cohorts get the same week range, and
+    the cells past their own runway are what mark_censored flags.
     """
     d = df.copy()
     d["cohort_week"] = pd.to_datetime(d["cohort_week"])
@@ -55,12 +41,7 @@ def densify(df: pd.DataFrame, last_date: pd.Timestamp) -> pd.DataFrame:
 
 
 def mark_censored(df: pd.DataFrame, last_date: pd.Timestamp) -> pd.DataFrame:
-    """Tag (cohort_week, weeks_since_first) cells whose window runs past the data end.
-
-    A cell is observable only if cohort_week + weeks_since_first weeks is fully
-    contained in the data, i.e. the whole 7-day observation week ends on or before
-    `last_date`.
-    """
+    """Tag cells whose 7-day observation window ends after `last_date`."""
     out = df.copy()
     out["cohort_week"] = pd.to_datetime(out["cohort_week"])
     week_start = out["cohort_week"] + pd.to_timedelta(out["weeks_since_first"] * 7, unit="D")
@@ -72,12 +53,10 @@ def mark_censored(df: pd.DataFrame, last_date: pd.Timestamp) -> pd.DataFrame:
 
 
 def matrix(df: pd.DataFrame, drop_censored: bool = True) -> pd.DataFrame:
-    """Cohort x weeks-since-first retention matrix. Censored cells become NaN.
+    """Cohort x week retention matrix, censored cells as NaN.
 
-    The grid is reindexed over the full observed week range so that a censored cell is
-    a visible blank in the heatmap rather than a column that quietly does not exist.
-    A missing column reads as "no data collected"; a blank cell reads as "not yet
-    observable", which is the true statement.
+    Reindexed over the full week range so a censored cell is a visible blank rather
+    than a missing column — "not yet observable", not "no data collected".
     """
     d = df.copy()
     if drop_censored and "censored" in d.columns:
@@ -93,10 +72,10 @@ def matrix(df: pd.DataFrame, drop_censored: bool = True) -> pd.DataFrame:
 
 
 def average_curve(df: pd.DataFrame) -> pd.DataFrame:
-    """Retention by week-since-first, pooled across cohorts, uncensored cells only.
+    """Retention by week, pooled across cohorts, uncensored cells only.
 
-    Pooled as sum(active)/sum(cohort_size) rather than as a mean of per-cohort rates,
-    so a tiny cohort cannot swing the curve as much as a large one.
+    Sum(active)/sum(cohort_size), not a mean of per-cohort rates, so a tiny cohort
+    cannot swing the curve.
     """
     d = df[~df["censored"]] if "censored" in df.columns else df
     g = d.groupby("weeks_since_first").agg(
@@ -109,7 +88,7 @@ def average_curve(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def censoring_summary(df: pd.DataFrame) -> dict:
-    """How much of the grid is censored -- quoted in the memo's limitations section."""
+    """How much of the grid is censored. Quoted in the memo's limitations."""
     total = len(df)
     censored = int(df["censored"].sum()) if "censored" in df.columns else 0
     per_cohort = (

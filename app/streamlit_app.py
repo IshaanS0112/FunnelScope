@@ -1,13 +1,11 @@
 """FunnelScope dashboard.
 
 Reads the committed CSVs in data/processed/ — no BigQuery connection, no credentials,
-no network. Anyone who clones the repo can run it, which is the entire reason the
-architecture exports to CSV instead of querying live.
+no network, so anyone who clones the repo can run it.
 
     streamlit run app/streamlit_app.py
 
-The dashboard supports the memo; it is not the deliverable. If a chart here does not
-help someone act on docs/MEMO.md, it should not exist.
+The dashboard supports the memo; it is not the deliverable.
 """
 
 from __future__ import annotations
@@ -58,11 +56,10 @@ def provenance_banner(manifest) -> None:
 
 
 def funnel_chart(row: pd.Series):
-    """Horizontal bars in FUNNEL ORDER.
+    """Horizontal bars in funnel order.
 
-    Altair rather than st.bar_chart because st.bar_chart sorts the index, which renders
-    the stages alphabetically — a funnel chart whose bars are not in funnel order is
-    worse than no chart, since the shape is the whole message.
+    Altair, not st.bar_chart: the latter sorts the index and renders the stages
+    alphabetically, and a funnel whose bars are out of order is worse than no chart.
     """
     import altair as alt
 
@@ -177,16 +174,10 @@ def page_retention(metrics, data):
     display = (m * 100).round(1)
     display.columns = [f"W{c}" for c in display.columns]
 
-    # A censored cell must read as "not yet observable", which means a visible BLANK.
-    # Two things fight that here and both had to go:
-    #   * Styler.background_gradient paints NaN with the colormap's "bad" colour, which
-    #     is black by default — and a black block reads as a catastrophic zero, exactly
-    #     the misreading this page exists to prevent; and
-    #   * st.dataframe renders the grid itself rather than the Styler's HTML, so it
-    #     prints "None" in those cells and shows the bad colour as solid black even when
-    #     the colormap asks for transparent.
-    # Rendering the Styler's own HTML sidesteps both. The heatmap needs no sorting or
-    # selection, so nothing is lost by giving up the interactive grid.
+    # Censored cells must read as a visible BLANK. st.dataframe renders its own grid
+    # rather than the Styler's HTML, printing "None" on a solid black background — which
+    # reads as a catastrophic zero, the misreading this page exists to prevent.
+    # Rendering the Styler's HTML sidesteps it; the heatmap needs no sorting anyway.
     observable = display.drop(columns=["W0"], errors="ignore")
     vmax = float(observable.max().max()) if not observable.empty else 100.0
 
@@ -224,8 +215,7 @@ def page_retention(metrics, data):
 
     st.subheader("Pooled retention curve (uncensored cells only)")
     curve = retention.average_curve(coh)
-    # Week 0 is 100% by definition and carries no information, but it owns the y-axis
-    # and squashes every week that does carry information into the bottom tenth.
+    # Week 0 is 100% by definition; plotted, it owns the y-axis and squashes the rest.
     plotted = curve[curve.weeks_since_first > 0]
     st.line_chart(plotted.set_index("weeks_since_first")["retention_rate"],
                   color=PALETTE[2], y_label="Retention", x_label="Weeks since first seen")
@@ -327,8 +317,7 @@ def page_opportunity(metrics, data):
                "That is the defensible claim, which is why the sweep is published "
                "instead of a single number.")
     sens = pd.DataFrame(metrics["sensitivity"])
-    # Column keys are the raw improvement fractions ("0.01"); label them as the
-    # percentage points a reader would actually say out loud.
+    # Column keys are raw fractions ("0.01"); label them as percentage points.
     pp_cols = [c for c in sens.columns if c != "to_stage"]
     pp_cols.sort(key=float)
     sens = sens.set_index("to_stage").loc[

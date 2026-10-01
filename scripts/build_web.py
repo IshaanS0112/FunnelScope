@@ -1,20 +1,12 @@
 #!/usr/bin/env python3
 """Build the static site's data bundle: metrics.json + CSVs -> web/data.js.
 
-WHY A SEPARATE FRONTEND AT ALL. The Streamlit dashboard needs Python, a pip install and
-a running process. That is fine for an analyst and useless for a link on a CV — the
-person most likely to open this project will not clone it. This site is plain HTML, CSS
-and JavaScript with no build step, no npm and no CDN, so it runs from a `file://` URL by
-double-click and from GitHub Pages by push, and it will still run in five years.
+Written as a .js assignment rather than .json because browsers block fetch() against
+file:// — a site that fetched its data would work when served and break when opened by
+double-click. A classic <script src> has no such restriction.
 
-WHY A .js FILE AND NOT .json. A browser blocks `fetch()` against `file://` for CORS
-reasons, so a site that fetched its JSON would work when served and break when opened
-directly. A classic `<script src>` has no such restriction. The data is therefore written
-as one assignment to `window.FUNNELSCOPE_DATA`, which works both ways.
-
-NO MATHS HAPPENS HERE. Every number is read from metrics.json or computed by importing
-funnelscope/, exactly like the memo and the dashboard. If this script started computing a
-rate of its own, the site and the memo could disagree, and then both would be worthless.
+No maths happens here. Every number is read from metrics.json or computed by importing
+funnelscope/, exactly like the memo and the dashboard.
 
 Usage:  python scripts/build_web.py
 """
@@ -37,7 +29,7 @@ DATA_JS = WEB_DIR / "data.js"
 
 
 def funnel_rows(df: pd.DataFrame) -> list[dict]:
-    """One row per segment, with the rates the site displays already attached."""
+    """One row per segment, with display rates already attached."""
     out = []
     for _, r in df.iterrows():
         viewed = float(r["viewed"])
@@ -64,11 +56,9 @@ def funnel_rows(df: pd.DataFrame) -> list[dict]:
 
 
 def retention_block(cohorts: pd.DataFrame, overview: pd.DataFrame) -> dict:
-    """The cohort grid, censored cells left as nulls so the site can render them blank.
+    """The cohort grid, censored cells as nulls so the site renders them blank.
 
-    Densified first, for the reason in funnelscope/retention.py: the query emits no row
-    for a week nobody returned, which makes a real zero and an unobservable cell look
-    identical.
+    Densified first — see funnelscope/retention.py.
     """
     last_date = pd.to_datetime(overview["last_date"]).max()
     dense = retention.mark_censored(retention.densify(cohorts, last_date), last_date)
@@ -95,12 +85,10 @@ def retention_block(cohorts: pd.DataFrame, overview: pd.DataFrame) -> dict:
 
 
 def acquisition_block(by_source: pd.DataFrame, revenue: pd.DataFrame) -> list[dict]:
-    """Volume and rate together, which is the whole point of the Acquisition page.
+    """Volume and rate together — the whole point of the Acquisition page.
 
-    A ranked table hides the difference between "high traffic, low conversion" (a
-    landing-page problem, spend less) and "low traffic, high conversion" (a scale
-    opportunity, spend more). Those need opposite responses, so both dimensions travel
-    together all the way to the chart.
+    A ranked table hides the difference between "high traffic, low conversion" (spend
+    less) and "low traffic, high conversion" (spend more).
     """
     rev = (revenue.groupby("source_medium")
            .agg(purchases=("purchases", "sum"), revenue_usd=("revenue_usd", "sum"))

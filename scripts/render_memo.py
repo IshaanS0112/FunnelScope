@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Render docs/MEMO.md from docs/MEMO_TEMPLATE.md + data/processed/metrics.json.
 
-The memo's prose lives in the template and its numbers live in the metrics file, so a
-re-export cannot leave a stale figure behind in the argument. The renderer also stamps
-data provenance into the header, and prepends an unmissable banner when the numbers
-came from the synthetic fixture rather than from BigQuery.
+Prose lives in the template, numbers live in metrics.json, so a re-export cannot leave a
+stale figure inside the argument. Fails on any unfilled {{token}}, and prepends an
+unmissable banner when the numbers came from the fixture.
 
 Usage:  python scripts/render_memo.py [--author "Your Name"]
 """
@@ -41,10 +40,9 @@ def pct(x: float, places: int = 1) -> str:
 
 
 def article(rendered: str) -> str:
-    """"a" or "an" in front of a rendered number. "a 81.9% drop" reads as a typo.
+    """"a" or "an" before a rendered number — "a 81.9% drop" reads as a typo.
 
-    English takes the article from how the number is SAID: eight, eleven, eighteen and
-    anything starting 8/11/18 begin with a vowel sound.
+    The article follows how the number is said: 8, 11 and 18 start with a vowel sound.
     """
     digits = rendered.lstrip("$").lstrip()
     return "an" if digits.startswith(("8", "11", "18")) else "a"
@@ -102,17 +100,14 @@ def build_tokens(m: dict, author: str) -> dict:
                          f"{r['impact']} | {r['confidence']} | {r['effort']} | "
                          f"{r['rice_score']:,.0f} |")
     top = m["rice"][0]
-    # The top recommendation earns a paragraph; the rest are in the table and the
-    # dashboard. A memo that justifies every row is a lab notebook.
+    # Only the top recommendation earns a paragraph; the rest are in the table.
     rice_reasoning = (
         f"**Why #1 ranks first:** {top['rationale']} *Assumption to challenge:* "
         f"{top['assumptions']}")
 
-    # Only the two comparisons a reader would act on go in the memo prose; the rest
-    # live in the dashboard. A memo that recites every test it ran is a lab notebook.
-    # The memo quotes a compact form of each verdict, not stats.verdict(): the full
-    # sentence is written for a dashboard tooltip where there is room, and two of them
-    # spend a third of the prose budget on restating the same test twice.
+    # Only the two comparisons a reader would act on; the rest live in the dashboard.
+    # Compact form, not stats.verdict(): the full sentence is written for a dashboard
+    # tooltip and two of them would eat a third of the prose budget.
     sig = m["significance_tests"]
     def _short(t: dict) -> str:
         a, b = t["comparison"].split(" vs ")
@@ -137,8 +132,8 @@ def build_tokens(m: dict, author: str) -> dict:
     worst_ch = min(big[:5], key=lambda s: s["conv"]) if src else {}
     best_ch = max(src, key=lambda s: s["conv"]) if src else {}
 
-    # The multiple-comparisons sentence is generated rather than written, so the memo
-    # cannot claim "the correction changes nothing" after a re-export where it did.
+    # Generated, so the memo cannot claim "the correction changes nothing" after a
+    # re-export where it did.
     mc = m.get("multiple_comparisons") or {}
     if not mc:
         correction_sentence = ""
@@ -179,11 +174,9 @@ def build_tokens(m: dict, author: str) -> dict:
     except Exception:
         pass
 
-    # ---- sentences that depend on WHAT THE DATA SAID, not on the template ----------
-    # These were fixed prose until the real export showed the device gap was not
-    # significant (p = 0.27). A template that asserts a device finding regardless of the
-    # z-test is a template that will eventually publish something false, so the claim is
-    # generated from the surviving gap — or from its absence.
+    # Sentences generated from what the data said, not fixed in the template. A template
+    # that asserts a segment finding regardless of the z-test will eventually publish
+    # something false.
     top_rec = m["rice"][0]
     if gap:
         gap_headline = (
@@ -303,17 +296,9 @@ def main() -> int:
 
     OUTPUT.write_text(text)
 
-    # The 800-word budget is on the ARGUMENT, not on the tables. Count prose only:
-    # tables are reference material a reader scans, prose is what they have to read.
-    # Letterhead (To/From/Re/Data) is metadata, not argument, so it is not charged
-    # against the budget -- and neither are tables or the provenance footer.
-    # Excluded from the budget, on the same grounds the spec excludes the letterhead
-    # and the footer: none of it is argument a reader has to read through.
-    #   "|"        table rows — reference material, scanned not read
-    #   ">"        the provenance banner
-    #   "#"        section headings — navigation
-    #   "---"      rules
-    #   letterhead To/From/Re/Data, and the footer
+    # The 800-word budget is on the ARGUMENT. Tables are reference material a reader
+    # scans; prose is what they have to read.
+    # Excluded: table rows, the provenance banner, headings, rules, letterhead, footer.
     prose_lines = [ln for ln in text.splitlines()
                    if not ln.lstrip().startswith(
                        ("|", ">", "#", "---", "*Numbers",

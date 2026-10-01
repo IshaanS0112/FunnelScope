@@ -1,7 +1,6 @@
 /* FunnelScope — static site styles.
-   No framework, no build step, no CDN. Everything here is hand-written so the page has
-   no dependency that can rot, and so it renders identically from a file:// URL and from
-   GitHub Pages. */
+   No framework, no build step, no CDN, so nothing here can rot and the page renders
+   identically from a file:// URL and from GitHub Pages. */
 
 :root {
   color-scheme: light dark;

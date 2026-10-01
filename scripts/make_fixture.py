@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
-"""Generate a synthetic GA4-shaped event log and aggregate it into the same CSVs
-that sql/ produces against BigQuery.
+"""Generate a synthetic GA4-shaped event log and aggregate it into the same CSVs that
+sql/ produces against BigQuery.
 
-WHY THIS EXISTS: so the analysis, the tests, the memo renderer and the dashboard can
-be exercised end to end with no GCP account. It is a pipeline fixture, nothing else.
+A pipeline fixture, not an analysis. The manifest it writes is stamped
+`source: synthetic-fixture` and every downstream artifact labels itself from that.
 
-WHAT IT IS NOT: an analysis. The manifest it writes is stamped
-`source: synthetic-fixture`, and every downstream artifact reads that stamp and labels
-itself as fixture output. Replace it by running scripts/run_queries.py.
-
-The simulator emits an actual per-user event log with timestamps, and the funnel CSVs
-are aggregated from that log twice by two different methods -- exactly as
-02_funnel_ordered.sql and 02b_funnel_validation.sql do -- so the cross-validation gate
-in scripts/analyze.py is genuinely exercised rather than trivially satisfied.
+It emits a real per-user event log and aggregates it TWICE, by both funnel methods, so
+the cross-validation gate is genuinely exercised rather than trivially satisfied.
 """
 
 from __future__ import annotations
@@ -58,25 +52,16 @@ NEW_MULT = {"new": 0.82, "returning": 1.35}
 
 STAGE_CODE = {"view_item": "V", "add_to_cart": "C", "begin_checkout": "K", "purchase": "P"}
 
-# Probability that a funnel step happens in a LATER session rather than the current one.
-# Without this the session-scoped funnel (09) would be identical to the user-scoped one
-# (02) and the comparison between them would measure nothing.
+# Chance a step happens in a LATER session. Without it the session-scoped funnel (09)
+# would equal the user-scoped one (02) and the comparison would measure nothing.
 P_RETURN_BEFORE = {"add_to_cart": 0.22, "begin_checkout": 0.14, "purchase": 0.18}
 
-# TWO GA4 BEHAVIOURS THE FIRST VERSION OF THIS FIXTURE DID NOT REPRODUCE, AND SHOULD HAVE.
-#
-# Both were found by the real BigQuery export failing the cross-validation gate, which
-# is the wrong place to find them: a fixture whose users each do every step exactly once,
-# at distinct timestamps, cannot tell a correct funnel from several incorrect ones.
-#
-# 1. REPEAT EVENTS. Real users browse and cart repeatedly — 6.3 view_item events per
-#    user in the GA4 sample, and 4.67 add_to_cart events per user who carts at all.
-#    That makes "first cart after first view" and "ever carted after ever viewing" two
-#    different questions, and on the real export they differed by 17%.
-# 2. BATCHED TIMESTAMPS. GA4 stamps every event in one network request with the same
-#    `event_timestamp`. Adding to cart from a product listing sends view_item and
-#    add_to_cart together, so they tie exactly — 11.3% of carting users on the real
-#    export. Strict `>` ordering drops every one of them.
+# Two GA4 behaviours a naive fixture misses, both found by the real export failing the
+# cross-validation gate:
+#   1. REPEAT EVENTS — 6.3 view_item per user, 4.67 add_to_cart per carting user, which
+#      makes "first cart after first view" and "ever carted after ever viewing" differ.
+#   2. BATCHED TIMESTAMPS — events in one request share a microsecond, so carting from a
+#      listing ties with the view. Strict `>` ordering drops those users.
 REPEAT_VIEWS = (0, 1, 2, 3, 5, 8)      # extra view_item events, drawn per user
 P_REPEAT_CART = 0.45                    # carts again after browsing more
 P_TIED_CART = 0.12                      # cart shares view's exact microsecond
@@ -136,15 +121,14 @@ def simulate(rng: np.random.Generator) -> pd.DataFrame:
                 return t + int(rng.integers(1, 14)) * day_us + int(rng.integers(0, day_us))
             return t + int(rng.integers(30_000_000, 3_600_000_000))
 
-        # Extra browsing, at new timestamps, so "first" and "ever" diverge.
+        # Extra browsing at new timestamps, so "first" and "ever" diverge.
         for _ in range(int(rng.choice(REPEAT_VIEWS))):
             extra = t0 + int(rng.integers(60_000_000, 6 * day_us))
             if extra <= window_end_us:
                 emit("view_item", extra)
         if did_cart[i]:
             if rng.random() < P_TIED_CART:
-                # Added straight from the listing: same request, same microsecond.
-                t = t0
+                t = t0  # added from the listing: same request, same microsecond
             else:
                 t = advance("add_to_cart", t)
             emit("add_to_cart", t)
@@ -165,16 +149,16 @@ def simulate(rng: np.random.Generator) -> pd.DataFrame:
                 session += 1
                 emit("session_start", back)
     out = pd.DataFrame(rows)
-    # Funnel events that ran past the window end would not appear in a real export
-    # restricted by _TABLE_SUFFIX. Drop them here for the same reason.
+    # Events past the window end would not appear in a _TABLE_SUFFIX-limited export.
     return out[out["event_timestamp"] <= window_end_us].reset_index(drop=True)
 
 
 def funnel_by_timestamps(log: pd.DataFrame, by: str | None,
                          unit: tuple[str, ...] = ("user_pseudo_id",)) -> pd.DataFrame:
-    """Method A -- first-occurrence timestamps per `unit`, with cumulative predicates.
-    Mirrors 02_funnel_ordered.sql (unit = the user) and 09_funnel_session_scoped.sql
-    (unit = the user's session)."""
+    """Method A: first-occurrence timestamps per `unit`, cumulative predicates.
+
+    Mirrors 02_funnel_ordered.sql (unit = user) and 09 (unit = user's session).
+    """
     keys = list(unit) + ([by] if by else [])
     piv = (log[log.event_name.isin(STAGE_CODE)]
            .pivot_table(index=keys, columns="event_name",
@@ -205,19 +189,11 @@ def funnel_by_timestamps(log: pd.DataFrame, by: str | None,
 
 
 def funnel_by_sequence(log: pd.DataFrame) -> pd.DataFrame:
-    """Method B -- collapse each user's FIRST occurrence of each stage into an ordered
-    string and test it with a regex. Mirrors 02b_funnel_validation.sql exactly, including
-    its two non-obvious rules:
+    """Method B: first occurrences as an ordered string, matched by regex.
 
-      * first occurrences only, because "first cart after first view" and "ever carted
-        after ever viewing" are different questions once users repeat a step; and
-      * ties broken by stage rank DESCENDING, because method A's strict `>` does not
-        advance the funnel on an equal timestamp, and an arbitrary order would let
-        roughly half of those users through.
-
-    The funnel logic still shares nothing with method A -- that compares timestamps
-    pairwise, this sorts and pattern-matches -- so a stage predicate that is not
-    cumulative still cannot survive the comparison.
+    Mirrors 02b_funnel_validation.sql including its two non-obvious rules — first
+    occurrences only, and ties broken by stage rank DESCENDING to reproduce method A's
+    strict `>`. The funnel logic is still independent of method A.
     """
     rank = {"V": 1, "C": 2, "K": 3, "P": 4}
     d = log[log.event_name.isin(STAGE_CODE)].assign(
@@ -240,9 +216,11 @@ def funnel_by_sequence(log: pd.DataFrame) -> pd.DataFrame:
 
 
 def funnel_by_sessions(log: pd.DataFrame) -> pd.DataFrame:
-    """The same funnel scoped to the session rather than the user.
-    Mirrors 09_funnel_session_scoped.sql. Its conversion is necessarily <= the
-    user-scoped figure, and the gap measures dependence on return visits."""
+    """The same funnel scoped to the session. Mirrors 09_funnel_session_scoped.sql.
+
+    Conversion is necessarily <= the user-scoped figure; the gap measures dependence
+    on return visits.
+    """
     out = funnel_by_timestamps(log, None, unit=("user_pseudo_id", "ga_session_id"))
     out["segment_type"] = "scope"
     out["segment_value"] = "session"
@@ -252,11 +230,8 @@ def funnel_by_sessions(log: pd.DataFrame) -> pd.DataFrame:
 def fold_long_tail(df: pd.DataFrame, min_users: int = MIN_USERS_PER_CHANNEL) -> pd.DataFrame:
     """Collapse channels below `min_users` into '(long tail)'.
 
-    Mirrors the @min_users branch in sql/04_funnel_by_source.sql. A channel with 40
-    users and one purchase has a confidence interval wide enough to contain almost
-    anything; reporting it as a finding would be noise dressed as signal. Applied here
-    too so the fixture and the BigQuery export have the same shape -- a fixture that
-    skips this would not exercise the '(long tail)' handling downstream.
+    Mirrors the @min_users branch in sql/04_funnel_by_source.sql, so the fixture and the
+    BigQuery export have the same shape.
     """
     small = df["viewed"] < min_users
     if not small.any():
@@ -269,8 +244,10 @@ def fold_long_tail(df: pd.DataFrame, min_users: int = MIN_USERS_PER_CHANNEL) -> 
 
 
 def timestamp_ties(log: pd.DataFrame) -> pd.DataFrame:
-    """How many users the strict ordering excludes because two events share a timestamp.
-    Mirrors 10_timestamp_ties.sql."""
+    """How many users the strict ordering excludes on a tied timestamp.
+
+    Mirrors 10_timestamp_ties.sql.
+    """
     piv = (log[log.event_name.isin(STAGE_CODE)]
            .pivot_table(index="user_pseudo_id", columns="event_name",
                         values="event_timestamp", aggfunc="min"))

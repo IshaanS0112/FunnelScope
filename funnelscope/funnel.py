@@ -16,8 +16,8 @@ class FunnelValidationError(AssertionError):
 def check_monotonic(df: pd.DataFrame) -> None:
     """Each stage must be a subset of the one before it, in every row.
 
-    A violation is not a data quirk. It means the ordering predicates in the SQL are
-    not cumulative, which is the single most common way a funnel query is wrong.
+    A violation means the SQL's ordering predicates are not cumulative — the most
+    common way a funnel query is silently wrong.
     """
     for i in range(1, len(FUNNEL_STAGES)):
         prev, curr = FUNNEL_STAGES[i - 1], FUNNEL_STAGES[i]
@@ -32,11 +32,11 @@ def check_monotonic(df: pd.DataFrame) -> None:
 
 def cross_validate(primary: pd.DataFrame, secondary: pd.DataFrame,
                    tolerance: float = 0.005) -> pd.DataFrame:
-    """Compare the timestamp-comparison funnel against the sequence-regex funnel.
+    """Compare the timestamp funnel against the sequence-regex funnel.
 
-    The two queries share nothing but the source table, so agreement is real evidence
-    rather than a tautology. Ties at identical microsecond timestamps are the only
-    expected source of drift; anything above `tolerance` is a bug.
+    The funnel logic is independent, so a non-cumulative predicate cannot survive the
+    comparison. Both methods use the same tie rule, so any drift above `tolerance` is
+    a bug. See docs/methodology.md for the two divergences this caught.
     """
     rows = []
     for stage in FUNNEL_STAGES:
@@ -111,10 +111,8 @@ def with_rates(df: pd.DataFrame) -> pd.DataFrame:
 def worst_step(row: pd.Series) -> StageTransition:
     """The transition with the steepest percentage drop-off.
 
-    NOT distinct from the transition with the largest recoverable revenue. In a
-    strictly ordered funnel the two rankings are identical by construction — see the
-    proof in funnelscope/sizing.py. Ranking by rate and ranking by dollars are one
-    fact, not two, and presenting them as corroborating evidence double-counts it.
+    Same stage as the largest recoverable revenue, always — see sizing.py. Rate and
+    dollars are one fact, not two.
     """
     return min(transitions(row), key=lambda t: t.step_conversion)
 
@@ -122,17 +120,9 @@ def worst_step(row: pd.Series) -> StageTransition:
 def session_gap(user_row: pd.Series, session_row: pd.Series) -> dict:
     """Compare the user-scoped funnel against the session-scoped one.
 
-    Session-scoped conversion is necessarily no higher than user-scoped conversion: a
-    user converts if ANY of their sessions does, so collapsing sessions into users can
-    only add conversions, never remove them. A session-scoped figure that comes out
-    *above* the user-scoped one is arithmetically impossible and means one of the two
-    queries is wrong, so it is checked rather than assumed.
-
-    The gap between them is the measurement this pair exists to produce: it is how much
-    of the funnel runs on people coming back. A small gap means the journey completes in
-    one sitting and session-level fixes are the whole game. A large gap means
-    re-engagement is doing much of the selling, and optimising a single session would be
-    attacking the wrong surface.
+    Session conversion cannot exceed user conversion — a user converts if any of their
+    sessions does — so that inequality is checked, not assumed. The gap measures how
+    much of the funnel depends on people coming back.
     """
     u_view, u_buy = float(user_row["viewed"]), float(user_row["purchased"])
     s_view, s_buy = float(session_row["viewed"]), float(session_row["purchased"])

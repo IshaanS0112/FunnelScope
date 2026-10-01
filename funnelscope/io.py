@@ -1,10 +1,8 @@
 """Loading exported CSVs, and the data-provenance manifest.
 
-Provenance is enforced structurally rather than by convention. Every write of the
-processed data set stamps a manifest recording whether the numbers came from BigQuery
-or from the synthetic fixture, and every consumer (memo renderer, dashboard, notebook)
-reads that stamp and labels itself accordingly. It is therefore not possible to
-publish fixture numbers while presenting them as an analysis of real GA4 data.
+Every write of data/processed/ stamps a manifest recording whether the numbers came from
+BigQuery or the synthetic fixture. Every consumer reads that stamp and labels itself, so
+fixture numbers cannot be published as an analysis.
 """
 
 from __future__ import annotations
@@ -47,10 +45,11 @@ class Manifest:
         return self.source == SOURCE_BIGQUERY
 
     def banner(self) -> str:
-        """One line to place at the top of any artifact built from this data."""
+        """One line for the top of any artifact built from this data.
+
+        No "Data:" prefix — every consumer supplies its own label.
+        """
         if self.is_real:
-            # No "Data:" prefix — every consumer supplies its own label, and the memo's
-            # letterhead was printing "Data: Data: bigquery-public-data...".
             return (
                 f"{self.dataset}, {self.window_start} to {self.window_end}. "
                 f"Exported {self.generated_at[:10]}."
@@ -86,7 +85,7 @@ def read_manifest() -> Manifest:
 
 
 def load(name: str) -> pd.DataFrame:
-    """Load one processed CSV by file stem, e.g. load('02_funnel_overall')."""
+    """Load one processed CSV by stem, e.g. load('02_funnel_overall')."""
     path = PROCESSED_DIR / f"{name}.csv"
     if not path.exists():
         raise FileNotFoundError(

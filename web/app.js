@@ -1,13 +1,10 @@
 /* FunnelScope — static site rendering.
  *
- * Reads window.FUNNELSCOPE_DATA (written by scripts/build_web.py) and renders it. There
- * is deliberately no framework and no chart library: the charts are small, the data is
- * fixed, and a dependency-free page still opens in five years.
+ * Reads window.FUNNELSCOPE_DATA (written by scripts/build_web.py). No framework and no
+ * chart library on purpose: a dependency-free page still opens in five years.
  *
- * NO ANALYSIS HAPPENS HERE. Every rate, interval and verdict was computed in
- * funnelscope/ and passed through metrics.json. This file formats numbers and draws
- * shapes. The moment it starts computing one of its own, the site and the memo can
- * disagree, and then both are worthless.
+ * No analysis happens here. Every rate, interval and verdict was computed in
+ * funnelscope/ and passed through metrics.json; this file formats and draws.
  */
 
 (function () {
@@ -58,8 +55,7 @@
     return node;
   };
 
-  /* Build a table from a column spec. `cols` entries are
-   * {head, get(row), num?, html?, cls(row)?}. */
+  /* Build a table from a column spec: {head, get(row), num?, html?, cls(row)?}. */
   function table(rows, cols) {
     var thead = el("tr", {}, cols.map(function (c) {
       return el("th", { class: c.num ? "num" : "", text: c.head });
@@ -108,9 +104,8 @@
         html: "<strong>Real GA4 export</strong>" + p.banner
       }));
     } else {
-      /* PART 7 of the spec: fixture output must carry a banner it cannot lose. The
-       * banner is derived from the same manifest the numbers are, so it is not possible
-       * to publish fixture figures while presenting them as an analysis. */
+      /* The banner is derived from the same manifest the numbers are, so fixture
+       * figures cannot be published as an analysis. */
       host.appendChild(el("div", {
         class: "banner fixture",
         html: "<strong>⚠ NOT AN ANALYSIS — SYNTHETIC FIXTURE OUTPUT</strong>" +
@@ -192,8 +187,8 @@
     host.appendChild(stat("Average order value", money(D.aov), "transaction-weighted"));
   }
 
-  /* Horizontal funnel bars. Width is proportional to users, so the shape itself carries
-   * the drop-off; the numbers are there to be quoted, not to be decoded from pixels. */
+  /* Horizontal funnel bars. Width is proportional to users, so the shape carries the
+   * drop-off and the numbers are there to be quoted rather than decoded. */
   function funnelChart(rows) {
     var W = 720, rowH = 34, gap = 10, labelW = 132, pad = 8;
     var stages = D.stages;
@@ -396,9 +391,8 @@
       R.censoring.cells_censored + " of " + R.censoring.cells_total +
       " cells excluded, not zeroed"));
 
-    /* Heatmap. Censored cells are rendered as hatched blanks rather than omitted: a
-     * missing column reads as "no data collected", a blank cell reads as "not yet
-     * observable", and only the second is true. */
+    /* Censored cells are hatched blanks, not omitted: a missing column reads as "no data
+     * collected", a blank cell reads as "not yet observable". */
     var head = el("tr", {}, [el("th", { class: "cohort", text: "Cohort" }),
                              el("th", { class: "cohort", text: "Size" })]
       .concat(R.weeks.map(function (w) { return el("th", { text: "W" + w }); })));
@@ -542,9 +536,9 @@
     ]));
   }
 
-  /* Volume on a log x-axis against conversion on y. The log scale is the point: channel
-   * volumes span two orders of magnitude, and on a linear axis every small channel
-   * collapses onto the origin — which is exactly where the scale opportunities live. */
+  /* Volume on a log x-axis against conversion on y. Channel volumes span two orders of
+   * magnitude; on a linear axis the small ones collapse onto the origin, which is
+   * exactly where the scale opportunities live. */
   function scatterChart(rows) {
     var W = 720, H = 330, L = 52, Rp = 120, T = 16, B = 46;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, role: "img" });
@@ -565,8 +559,7 @@
     }
     svg.appendChild(svgEl("line", { class: "axis", x1: L, x2: W - Rp, y1: y(0), y2: y(0) }));
 
-    /* The overall conversion line is what turns a cloud of dots into a read: above it is
-     * a channel worth more traffic, below it is a channel worth a landing-page look. */
+    /* The site-average line turns a cloud of dots into a read. */
     var overall = D.funnel.overall[0].conversion;
     if (overall < maxY) {
       svg.appendChild(svgEl("line", {
@@ -596,9 +589,8 @@
       });
     });
 
-    /* Nudge labels apart vertically when bubbles land close together. Without this the
-     * channels clustered around the site average overwrite each other, which is exactly
-     * the region a reader is trying to read. */
+    /* Nudge labels apart when bubbles cluster, or they overwrite each other right
+     * where a reader is looking. */
     labels.sort(function (a, b) { return a.y - b.y; });
     for (var li = 1; li < labels.length; li++) {
       var minGap = 13;
