@@ -373,7 +373,7 @@ def main():
     st.sidebar.divider()
     st.sidebar.markdown(
         "**The memo is the deliverable.** This dashboard supports it: "
-        "[`docs/MEMO.md`](https://github.com/IshaanS0112/FunnelScope/blob/main/docs/MEMO.md)")
+        "[`docs/MEMO.md`](https://github.com/Ishaana0112/FunnelScope/blob/main/docs/MEMO.md)")
     st.sidebar.caption(
         "There is also a dependency-free static version of this dashboard in `web/`, "
         "which opens by double-click and needs no Python. Build it with "

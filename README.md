@@ -31,7 +31,7 @@ business-analyst work. That is the gap it fills, and that is the whole claim.
 ### macOS / Linux
 
 ```bash
-git clone https://github.com/IshaanS0112/FunnelScope.git
+git clone https://github.com/Ishaana0112/FunnelScope.git
 cd FunnelScope
 bash setup.sh
 ```
@@ -39,7 +39,7 @@ bash setup.sh
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/IshaanS0112/FunnelScope.git
+git clone https://github.com/Ishaana0112/FunnelScope.git
 cd FunnelScope
 .\setup.ps1
 ```
