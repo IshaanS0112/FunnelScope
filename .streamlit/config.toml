@@ -1,0 +1,33 @@
+# Paper theme — the same tokens as web/tokens.css, so the dashboard and the site match.
+
+[theme]
+base = "light"
+primaryColor = "#1D3FD8"
+backgroundColor = "#F6F5F1"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#15171A"
+linkColor = "#1D3FD8"
+borderColor = "#E2DFD6"
+showWidgetBorder = true
+baseRadius = "0.125rem"
+buttonRadius = "0.125rem"
+codeBackgroundColor = "#EFEDE6"
+dataframeBorderColor = "#E2DFD6"
+dataframeHeaderBackgroundColor = "#EFEDE6"
+font = "Geist:https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap, sans-serif"
+headingFont = "'Instrument Serif':https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap, serif"
+codeFont = "'Geist Mono':https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400&display=swap, monospace"
+baseFontSize = 15
+headingFontWeights = [400, 400, 400, 400, 400, 400]
+metricValueFontWeight = 500
+# Highlight mode: cobalt for the series that matters, greys for context.
+chartCategoricalColors = ["#1D3FD8", "#8C9097", "#C9C5B9", "#E0703A", "#2E9C7A", "#8A5CC9"]
+greenColor = "#0F8A5F"
+redColor = "#C2362F"
+orangeColor = "#B7791F"
+blueColor = "#1D3FD8"
+
+[theme.sidebar]
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#EFEDE6"
+borderColor = "#E2DFD6"

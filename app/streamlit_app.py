@@ -24,7 +24,9 @@ from funnelscope import FUNNEL_STAGES, STAGE_LABELS, io as fio, retention  # noq
 
 st.set_page_config(page_title="FunnelScope", page_icon="📉", layout="wide")
 
-PALETTE = ["#4C6EF5", "#F59F00", "#12B886", "#E8590C", "#7048E8", "#1098AD"]
+# Paper theme: accent for the series that carries the point, greys for context.
+PALETTE = ["#1D3FD8", "#8C9097", "#C9C5B9"]
+ACCENT, MUTED, FAINT = PALETTE
 
 
 @st.cache_data
@@ -76,7 +78,7 @@ def funnel_chart(row: pd.Series):
         y=alt.Y("Stage:N", sort=order, title=None),
         x=alt.X("Users:Q", title=None, axis=alt.Axis(format="~s")),
     )
-    chart = (base.mark_bar(color=PALETTE[0], cornerRadius=2)
+    chart = (base.mark_bar(color=FAINT, cornerRadius=2)
              + base.mark_text(align="left", dx=5, fontSize=11).encode(text="Label:N"))
     st.altair_chart(chart.properties(height=36 * len(df)), use_container_width=True)
     return df
@@ -188,7 +190,7 @@ def page_retention(metrics, data):
                     "rgba(130,130,130,.30) 5px);")
         weight = min((value / vmax) ** 0.55, 1.0) if vmax else 0.0
         colour = "color:#fff;font-weight:600;" if weight > 0.62 else ""
-        return f"background-color: rgba(47,95,208,{weight * 0.88:.3f});{colour}"
+        return f"background-color: rgba(29,63,216,{weight * 0.8:.3f});{colour}"
 
     styled = (display.style
               .format("{:.1f}%", na_rep="")
@@ -218,7 +220,7 @@ def page_retention(metrics, data):
     # Week 0 is 100% by definition; plotted, it owns the y-axis and squashes the rest.
     plotted = curve[curve.weeks_since_first > 0]
     st.line_chart(plotted.set_index("weeks_since_first")["retention_rate"],
-                  color=PALETTE[2], y_label="Retention", x_label="Weeks since first seen")
+                  color=ACCENT, y_label="Retention", x_label="Weeks since first seen")
     st.caption("Week 0 is 100% for every cohort by construction and is omitted — plotted, "
                "it owns the axis and flattens every week that carries information.")
 

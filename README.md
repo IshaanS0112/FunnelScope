@@ -1,311 +1,102 @@
+<p align="center">
+  <img src="docs/screenshots/hero.png" alt="FunnelScope report: four in five shoppers leave before they add to cart" width="100%">
+</p>
+
 # FunnelScope
 
-**Product analysis of raw GA4 event data: an ordered conversion funnel, cohort retention,
-opportunity sizing, and a RICE-prioritised recommendation memo.**
+**Where shoppers leave a GA4 ecommerce funnel, what that is worth, and what to fix first.**
+A product-analytics case study on 4.3 million raw events, written as a decision memo rather than a dashboard.
 
-`BigQuery SQL` · `Python 3.12` · `Streamlit` · `pytest`
+[![Live report](https://img.shields.io/badge/live_report-open-1D3FD8)](https://ishaans0112.github.io/FunnelScope/)
+[![CI](https://github.com/IshaanS0112/FunnelScope/actions/workflows/ci.yml/badge.svg)](https://github.com/IshaanS0112/FunnelScope/actions/workflows/ci.yml)
+![BigQuery](https://img.shields.io/badge/BigQuery-SQL-15171A)
+![Python](https://img.shields.io/badge/Python-3.12-15171A)
+![Tests](https://img.shields.io/badge/tests-159_passing-0F8A5F)
+![License](https://img.shields.io/badge/license-MIT-5B5F66)
 
-> **The deliverable is [`docs/MEMO.md`](docs/MEMO.md).** The dashboards support it.
-> Read the memo first; the SQL is where the work is.
-
----
-
-## What this is, honestly
-
-This analyses **Google's public obfuscated GA4 sample export** —
-`bigquery-public-data.ga4_obfuscated_sample_ecommerce`, 1 Nov 2020 to 31 Jan 2021. It is
-a demo dataset, not a business problem I uncovered, and the repo does not pretend
-otherwise. What is real is the analysis: SQL written against GA4's genuinely nested event
-schema, an ordered funnel that survives being computed two independent ways, significance
-testing corrected for multiple comparisons, and a memo that says what it would do and
-what it cannot know.
-
-I built it because a portfolio full of *systems I built* had nothing in it that was
-*analysis I performed on real event data*, which is the core competency for product- and
-business-analyst work. That is the gap it fills, and that is the whole claim.
+**[Read the memo →](docs/MEMO.md)** · [Live report](https://ishaans0112.github.io/FunnelScope/) · [Methodology](docs/methodology.md) · [Interview defence](docs/INTERVIEW.md)
 
 ---
 
-## Quick start
+## Results snapshot
 
-### macOS / Linux
+| | |
+|---|---|
+| **Data** | 4,295,584 GA4 events · Google Merchandise Store · Nov 2020 – Jan 2021 |
+| **Funnel** | 61,252 viewers → 11,114 carts → 4,167 checkouts → **2,356 purchases (3.85%)** |
+| **Biggest leak** | **81.9%** of viewers never add to cart — 85% of every shopper the funnel loses |
+| **Real segment gap** | Returning shoppers convert at **1.8×** new ones (6.40% vs 3.60%, adjusted p = 2e-24) |
+| **Not a finding** | Desktop vs mobile: 3.77% vs 3.95%, **p = 0.27 — noise**, so no mobile project |
+| **Largest prize** | Up to **$41k** from a 5-point lift in add-to-cart (upper bound) |
+| **Recommendation** | Rework the product-page add-to-cart path — scores **4.8×** the next option on RICE |
+
+## Business question → decision
+
+Each chapter of the report answers one question a product team would actually ask, and ends in a decision rather than a chart.
+
+| # | Business question | What the data says | Decision |
+|---|---|---|---|
+| 01 | Where do shoppers leave? | 81.9% drop before cart; later steps keep 37% and 57% | Fix the product page before checkout |
+| 02 | Is the loss concentrated in a segment? | New vs returning is real; device is noise | Don't fund a mobile-specific fix |
+| 03 | Which channels bring buyers? | Conversion spans 3.6% – 5.7%; volume and quality diverge | Rebalance spend — after checking LTV |
+| 04 | Do shoppers come back? | 4.3% return in week one, yet 22% of purchases need a return visit | Persist the cart across sessions |
+| 05 | What is each fix worth? | $41k / $20k / $13k ceilings by step | Size steps as ceilings, never forecasts |
+| 06 | What do we do first? | Product page leads RICE 23,398 to 4,861 | Ship it behind an A/B test |
+| 07 | Why trust any of this? | Funnel computed two independent ways — agree to zero | Pipeline refuses to publish if they diverge |
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[(GA4 export<br/>BigQuery)] -->|11 SQL queries<br/>2.7 GB| B[CSV exports<br/>+ provenance manifest]
+    B --> C{Correctness gates}
+    C -->|monotonic + two methods agree| D[analyze.py<br/>z-tests · Holm · sizing · RICE]
+    C -->|diverge| X[Stop — nothing published]
+    D --> E[metrics.json]
+    E --> F[Decision memo]
+    E --> G[Static report site]
+    E --> H[Streamlit dashboard]
+```
+
+**The gate is the part worth reading.** The funnel is computed twice — once by comparing timestamps, once by regex over each shopper's event sequence. On the first real export they disagreed by 17%, and neither query had a bug: GA4 users repeat steps constantly, and GA4 stamps every event in one request with the same microsecond. Both are now handled, the methods agree exactly, and if they ever drift by more than 0.5% the pipeline stops. Full story in [methodology.md](docs/methodology.md).
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/segments.png" alt="Forest plot: device gap crosses zero, new vs returning does not"></td>
+    <td width="50%"><img src="docs/screenshots/retention.png" alt="Cohort retention heatmap with right-censored cells hatched"></td>
+  </tr>
+  <tr>
+    <td><sub>Segment gaps with 95% intervals — device crosses zero, so it isn't written up as a finding.</sub></td>
+    <td><sub>Cohort retention. Hatched cells are not yet observable, not zero — excluded from every average.</sub></td>
+  </tr>
+</table>
+
+## What's in the repo
+
+| Folder | What it holds |
+|---|---|
+| [`sql/`](sql/) | 11 parameterised BigQuery queries — funnel, validation, segments, cohorts, revenue |
+| [`funnelscope/`](funnelscope/) | The only place maths happens: funnel gates, z-tests, Holm, sizing, censoring, RICE |
+| [`scripts/`](scripts/) | The pipeline: export → analyse → render memo → build site |
+| [`docs/`](docs/) | **[MEMO.md](docs/MEMO.md)** (the deliverable), methodology, interview defence, query costs |
+| [`web/`](web/) | The report site — plain HTML/CSS/JS, opens from `file://`, deploys to GitHub Pages |
+| [`app/`](app/) | Streamlit dashboard for interactive filtering |
+| [`tests/`](tests/) | 159 tests: SQL static checks, funnel invariants, statistics vs SciPy/statsmodels |
+
+## Run it
 
 ```bash
-git clone https://github.com/IshaanS0112/FunnelScope.git
-cd FunnelScope
-bash setup.sh
+git clone https://github.com/IshaanS0112/FunnelScope.git && cd FunnelScope
+bash setup.sh                      # Windows: .\setup.ps1
+open web/index.html                # the report — no server needed
 ```
 
-### Windows (PowerShell)
+`streamlit run app/streamlit_app.py` for the dashboard · `pytest` for the tests · `make all` to rebuild everything. Re-exporting from BigQuery needs a free Sandbox project — see [sql/README.md](sql/README.md).
 
-```powershell
-git clone https://github.com/IshaanS0112/FunnelScope.git
-cd FunnelScope
-.\setup.ps1
-```
+## Scope, honestly
 
-If PowerShell refuses to run the script, its execution policy is blocking local files:
-`Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, then re-run.
-
-Both scripts create a **Python 3.12** virtual environment, install the dependencies, and
-build the synthetic fixture so every artifact has something to render immediately. Python
-is pinned to 3.12 because some dependencies still have no 3.13 wheels on Windows, and a
-setup script that only works on one machine is a defect.
-
-### Then
-
-```bash
-open web/index.html                      # static site — no server, no Python
-streamlit run app/streamlit_app.py       # local analyst dashboard
-pytest -q                                # full test suite
-```
+This is Google's public obfuscated GA4 sample, not a business problem I found — channel and product names are redacted at source. What is real is the analysis: SQL against GA4's nested schema, a funnel that survives two independent implementations, statistics corrected for multiple comparisons, and recommendations that state their assumptions. Every revenue figure is an upper bound, and nothing here has been A/B tested.
 
 ---
 
-## What it looks like
-
-<p align="center">
-  <img src="docs/screenshots/site-1-funnel.png" alt="The static site's Funnel page: stage counts, step conversion by segment, and the user-scoped versus session-scoped comparison." width="100%">
-</p>
-
-The static site's **Funnel** page, on the real GA4 export: 61,252 viewers → 11,114 carts →
-4,167 checkouts → 2,356 purchases, 3.85% end to end. The green banner is derived from the
-same manifest the numbers are, so fixture output cannot render as a clean analysis — it
-gets a red "NOT AN ANALYSIS" banner it cannot lose.
-
-<p align="center">
-  <img src="docs/screenshots/site-2-retention.png" alt="Cohort retention grid with right-censored cells drawn as hatched blanks, and the pooled retention curve." width="100%">
-</p>
-
-**Retention.** The hatched cells are right-censored — a cohort formed in the last weeks of
-the window physically cannot show week-8 retention, so those cells are excluded from every
-average rather than plotted as zeros. The staircase shape is the window closing, not users
-leaving.
-
-<p align="center">
-  <img src="docs/screenshots/site-3-acquisition.png" alt="Volume-versus-conversion scatter with channels plotted on a log volume axis against conversion rate." width="100%">
-</p>
-
-**Acquisition.** Volume and rate together, because they separate two problems that a ranked
-table blurs: high traffic with low conversion is a landing-page problem (spend less), low
-traffic with high conversion is a scale opportunity (spend more).
-
-<p align="center">
-  <img src="docs/screenshots/site-5-validation-gate.png" alt="The cross-validation gate expanded, showing both funnel methods agreeing to zero difference and the table of users excluded by timestamp ties." width="100%">
-</p>
-
-**The correctness gate**, and the two GA4 behaviours it caught on the first real export —
-repeat events and batched timestamps. Both methods now agree to zero difference at every
-stage, and the cost of the strict ordering rule is measured rather than assumed.
-
-<p align="center">
-  <img src="docs/screenshots/streamlit-4-opportunity.png" alt="The Streamlit dashboard's Opportunity page: sizing table with bootstrap intervals, sensitivity sweep and Holm-corrected significance verdicts." width="100%">
-</p>
-
-The Streamlit dashboard's **Opportunity** page — sizing with bootstrap intervals, the
-sensitivity sweep, and Holm-corrected significance verdicts. Note the device comparison:
-*not distinguishable from noise*, and reported as such.
-[More screenshots](docs/screenshots/).
-
----
-
-## Two front ends, for two different readers
-
-**[`web/`](web/) — a static site.** Plain HTML, CSS and JavaScript: no framework, no build
-step, no npm, no CDN. It opens by double-click from a `file://` URL and deploys to GitHub
-Pages by pushing. That matters because the person most likely to open this project will
-not clone it, and a dashboard that needs `pip install` first is a dashboard they will not
-see. `scripts/build_web.py` writes `web/data.js` from `metrics.json`; the page computes
-nothing of its own.
-
-**[`app/streamlit_app.py`](app/streamlit_app.py) — the local dashboard.** Faster to extend
-while the analysis is being worked out, and it has the filtering an analyst wants. It
-needs Python running, which is why it is not the thing on the CV.
-
-Both read the same `metrics.json` and import the same `funnelscope/` package, so they
-cannot disagree with each other or with the memo.
-
----
-
-## Regenerating everything from BigQuery
-
-```bash
-pip install google-cloud-bigquery db-dtypes
-gcloud auth application-default login
-export GOOGLE_CLOUD_PROJECT=your-sandbox-project-id
-
-python scripts/run_queries.py --dry-run   # cost estimate, nothing billed
-python scripts/run_queries.py             # export sql/ results to data/processed/
-python scripts/analyze.py                 # gates, sizing, z-tests, RICE -> metrics.json
-python scripts/render_memo.py             # metrics.json -> docs/MEMO.md
-python scripts/build_web.py               # metrics.json -> web/data.js
-```
-
-Or `make all`, which runs the last three in order.
-
-BigQuery Sandbox is free, needs no billing account, and gives 1 TiB/month. A full refresh
-here is **2.7 GB measured** — roughly 380 free re-runs a month. Per-query bytes are logged
-in [`docs/QUERY_COSTS.md`](docs/QUERY_COSTS.md); `09` alone is 982 MB, more than the next
-four queries combined, because `ga_session_id` lives inside `event_params` and BigQuery
-cannot read one key out of a repeated record without reading the record.
-
----
-
-## Architecture, and why it looks like this
-
-```
-sql/*.sql                    versioned queries, parameterised, documented
-   │  scripts/run_queries.py
-   ▼
-data/processed/*.csv         committed  ──►  _manifest.json records provenance
-   │  scripts/analyze.py     ── correctness gates run FIRST ──
-   ▼
-data/processed/metrics.json  every number quoted anywhere
-   ├─► scripts/render_memo.py ──► docs/MEMO.md
-   ├─► scripts/build_web.py   ──► web/ static site
-   └─► app/streamlit_app.py   ──► local dashboard
-```
-
-**Two BigQuery Sandbox constraints shaped this:** tables and views expire after 60 days,
-and DML is blocked. So nothing is persisted server-side; the repo persists *results*.
-
-The consequence is the good part. Because the front ends read exported data rather than
-querying BigQuery live, anyone can run them — a recruiter, an interviewer, you. A
-live-query dashboard would run for exactly one person and would be dead in 60 days.
-
----
-
-## The parts worth looking at
-
-**`sql/02_funnel_ordered.sql` — cumulative ordering predicates.**
-Each funnel stage re-asserts every earlier condition. The obvious independent form
-(`COUNTIF(checkout_ts > cart_ts)` on its own) lets the funnel go non-monotonic: a user can
-satisfy `checkout > cart` without ever satisfying `cart > view`, and then a later stage
-exceeds an earlier one. It raises no error — it just quietly produces a better-looking
-number. Explained in the file, enforced by `funnelscope.funnel.check_monotonic`, and
-grepped for by a test.
-
-**`sql/02b_funnel_validation.sql` — the same funnel, computed a second way, and the
-best thing in the repo.** Events are collapsed into an ordered string and matched with a
-sequence regex; the funnel logic shares nothing with the timestamp method. The pipeline
-**refuses to emit metrics** if the two disagree by more than 0.5%.
-
-**It fired on the first real BigQuery export, by 17%, and it was right to.** Neither
-query had a bug — they were answering different questions, and the synthetic fixture
-could not reveal it because every simulated user did each step once at a distinct
-timestamp. Two causes, both specific to real GA4 data: **repeat events** (6.3 `view_item`
-per user, 4.67 `add_to_cart` per carting user, so "ever carted after ever viewing" and
-"first cart after first view" are different questions — one pattern alone accounted for
-938 extra users) and **batched timestamps** (GA4 stamps every event in one request with
-the same microsecond, so carting from a listing ties with the view; strict `>` drops
-those users, an arbitrary sequence order kept half). Both queries now answer the same
-question under the same tie rule and agree to **zero difference at every stage**. The
-fixture reproduces both behaviours, with `tests/test_fixture_realism.py` asserting it
-still does.
-
-**`sql/10_timestamp_ties.sql` — what the strict ordering rule costs.**
-1,422 users, 12.8% of the cart stage, are excluded because GA4 batched their view and
-cart into one request. Under `>=` the stage reads 12,536 instead of 11,114. The strict
-reading is kept — an equal timestamp is not evidence of an ordering — but the magnitude
-is measured and stated in the memo's limitations, because an unquantified conservative
-choice is just an undisclosed one.
-
-**`sql/09_funnel_session_scoped.sql` — the same funnel, scoped to the visit.**
-Session-scoped conversion is necessarily no higher than user-scoped conversion, and the
-gap between them measures how much of the funnel runs on people coming back. A large gap
-means a single-session optimisation is attacking the wrong surface.
-
-**`funnelscope/sizing.py` — a correction and a proof.**
-The standard formula `users_lost × improvement_pp × …` uses the wrong denominator: a
-percentage-point lift applies to the conversion *rate*, whose denominator is users
-entering. The `users_lost` form is only `(1 − rate)` of the correct figure — 30% short at
-a 30% step — and correcting it means multiplying by `1/(1 − rate)`, 1.43× at a 30% step.
-More interestingly, the frequent claim that *"the biggest recoverable revenue is rarely
-the worst drop-off stage, and that gap is the finding"* is **impossible** in a strictly
-ordered funnel: recoverable revenue reduces to a monotone function of step conversion, so
-the two rankings are identical by construction. Proved in the module docstring, asserted
-over random funnels in the test suite, and stated in the memo instead of a finding that
-cannot exist.
-
-**`funnelscope/retention.py` — right-censoring, and the bug underneath it.**
-A cohort formed in the last weeks of a fixed window cannot show later-week retention, so
-those cells are tagged and excluded rather than plotted as zeros. The subtler part: the
-retention query emits **no row at all** for a week nobody returned, which makes a real
-zero and an unobservable cell indistinguishable — and censoring can only be marked on rows
-that exist. `densify()` expands the grid to the full cohort × week rectangle first.
-Without it the censored share is computed over observed cells only and can read as exactly
-0% while appearing to work.
-
-**`funnelscope/stats.py` — Holm–Bonferroni, and a finding it prevented.**
-Several segment comparisons at α = 0.05 each do not hold the family-wise error rate at
-0.05; with four comparisons it is 18.5%. Both raw and adjusted p-values are reported and
-the corrected verdict is the one the memo quotes.
-
-More useful than the correction itself: **the device gap is not significant here.**
-Desktop 3.77% against mobile 3.95%, p = 0.27, on 35,711 and 24,151 users. The device
-split is the cut everyone expects to be the finding, and on this dataset it is not one —
-so the memo says "do not act on it" instead of writing it up. An earlier version of the
-pipeline always sized the device gap and had a device narrative written into the memo
-template, which would have published a claim the z-test had already rejected. The
-headline gap is now whichever one survives correction (here: new vs returning, 3.60% vs
-6.40%, adjusted p = 2e-24), or a plain statement that none did.
-
-**`funnelscope/io.py` — provenance you cannot bypass.**
-Every write stamps `data/processed/_manifest.json` with `bigquery` or
-`synthetic-fixture`. The memo renderer, both dashboards and the notebook read that stamp
-and label themselves. Fixture numbers physically cannot render as a clean analysis, and a
-test asserts the linkage in both directions.
-
----
-
-## Repository layout
-
-```
-sql/            11 documented queries + a README with measured per-query scan costs
-funnelscope/    funnel maths, censoring, sizing, z-tests, Holm, RICE
-                (one implementation, shared by everything downstream)
-scripts/        run_queries · make_fixture · analyze · render_memo · build_web
-data/processed/ committed CSVs + _manifest.json + metrics.json
-notebooks/      analysis.ipynb — exploration; imports funnelscope, re-implements nothing
-web/            static site — index.html · styles.css · app.js · data.js (generated)
-app/            streamlit_app.py — Funnel · Retention · Acquisition · Opportunity
-docs/           MEMO.md (the deliverable) · MEMO_TEMPLATE.md · methodology.md
-                QUERY_COSTS.md · INTERVIEW.md · screenshots/
-tests/          invariants, SQL static checks, full pipeline, both front ends
-```
-
-## Tests
-
-```bash
-pytest                    # unit + SQL static checks + dashboard smoke tests
-pytest -m slow            # full fixture -> analyze -> memo -> site chain
-```
-
-The SQL cannot be executed without GCP, so it is checked for what is statically knowable
-and expensive when wrong: a missing `_TABLE_SUFFIX` filter, a `SELECT *`, any DDL/DML,
-missing header documentation, and — for the funnel queries specifically — stage predicates
-that are not cumulative. `sqlglot` parses every file against the BigQuery dialect.
-
-Beyond that: funnel invariants, retention censoring and densification, the sizing model
-including the random-funnel equivalence property, the z-test against SciPy, Holm against
-statsmodels, the re-export diff, and smoke tests that click through every page of both
-front ends.
-
-## Without a GCP account
-
-```bash
-python scripts/make_fixture.py   # simulated GA4-shaped event log
-python scripts/analyze.py
-python scripts/render_memo.py
-python scripts/build_web.py
-```
-
-This exercises the whole pipeline with no credentials. It is a **fixture, not an
-analysis**: the fixture simulates a per-user event log and aggregates it twice by both
-funnel methods, so the cross-validation gate is genuinely exercised rather than trivially
-satisfied. The manifest records it as synthetic, and every artifact it produces carries a
-banner saying so.
-
-## Licence
-
-MIT — see [LICENSE](LICENSE).
+<sub>MIT licence · Built by Ishaan Singh</sub>

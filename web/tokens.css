@@ -1,0 +1,77 @@
+/* FunnelScope design tokens — Paper theme.
+   Components reference these variables only; no raw colours outside this file. */
+
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("fonts/InstrumentSerif-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("fonts/InstrumentSerif-400-italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist";
+  src: url("fonts/Geist-variable.woff2") format("woff2");
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("fonts/GeistMono-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+
+  --bg: #F6F5F1;
+  --surface: #FFFFFF;
+  --surface-2: #EFEDE6;
+  --border: #E2DFD6;
+  --border-strong: #C9C5B9;
+
+  --text: #15171A;
+  --text-muted: #5B5F66;
+  --text-subtle: #8C9097;
+
+  --accent: #1D3FD8;
+  --accent-fg: #FFFFFF;
+  --accent-tint: rgba(29, 63, 216, 0.08);
+  --accent-ramp: 29, 63, 216;
+
+  --success: #0F8A5F;
+  --success-tint: rgba(15, 138, 95, 0.10);
+  --warning: #B7791F;
+  --warning-tint: rgba(183, 121, 31, 0.10);
+  --danger: #C2362F;
+  --danger-tint: rgba(194, 54, 47, 0.08);
+
+  --series-muted: #8C9097;
+  --series-faint: #C9C5B9;
+
+  --font-display: "Instrument Serif", Georgia, serif;
+  --font-sans: "Geist", -apple-system, "Segoe UI", Arial, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --radius-control: 2px;
+  --radius-card: 4px;
+  --shadow-pop: 0 8px 24px rgba(21, 23, 26, 0.08);
+
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
+  --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px; --s-20: 80px; --s-24: 96px;
+
+  --ease-enter: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+}

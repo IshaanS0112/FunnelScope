@@ -28,7 +28,7 @@ def bundle() -> dict:
 
 
 def test_site_files_exist():
-    for path in (INDEX, APP_JS, WEB / "styles.css"):
+    for path in (INDEX, APP_JS, WEB / "styles.css", WEB / "tokens.css"):
         assert path.exists(), f"{path.name} is missing"
 
 
@@ -71,14 +71,48 @@ def test_bundle_has_every_key_the_page_reads():
         assert key in b, f"web/data.js is missing '{key}'"
 
 
-def test_every_page_the_tabs_declare_exists_in_the_html():
-    """The tab list lives in app.js and the panels live in index.html. A mismatch is a
-    blank page, and there is no framework to complain about it."""
+def test_every_chapter_in_the_nav_exists_in_the_html():
+    """The chapter list lives in app.js and the sections live in index.html. A mismatch
+    is a nav link to nowhere, and there is no framework to complain about it."""
     ids = re.findall(r'\{ id: "(\w+)", label:', APP_JS.read_text())
-    assert ids, "could not find the PAGES list in app.js"
+    assert ids, "could not find the CHAPTERS list in app.js"
     html = INDEX.read_text()
-    for page in ids:
-        assert f'id="page-{page}"' in html, f"app.js declares '{page}' with no panel"
+    for chapter in ids:
+        assert re.search(rf'<section[^>]+id="{chapter}"', html), (
+            f"app.js links to chapter '{chapter}' with no section")
+
+
+def test_every_chapter_states_a_business_question_and_a_decision():
+    """The report's structure is the point: each chapter opens with the business
+    question it answers and closes with what to do about it."""
+    html = INDEX.read_text()
+    sections = re.findall(r'<section class="chapter[^"]*" id="(\w+)">(.*?)</section>', html, re.S)
+    assert len(sections) >= 6, "expected the numbered report chapters"
+    for sid, body in sections:
+        assert "Business question" in body, f"chapter '{sid}' has no business question"
+        assert 'class="decision"' in body, f"chapter '{sid}' has no decision"
+
+
+def test_fonts_are_self_hosted():
+    """The design system's fonts are bundled so the page still renders offline and from
+    file:// — fetching them from Google would break both."""
+    tokens = (WEB / "tokens.css").read_text()
+    for url in re.findall(r'url\("([^"]+)"\)', tokens):
+        assert not url.startswith(("http", "//")), f"remote font: {url}"
+        assert (WEB / url).exists(), f"missing font file {url}"
+
+
+def test_data_strings_are_escaped_before_innerhtml():
+    """GA4's obfuscated channel names ('<Other> / <Other>') are valid HTML tags. Any
+    channel or segment name interpolated into innerHTML without esc() silently
+    disappears from the page — which is exactly what the first version did."""
+    js = APP_JS.read_text()
+    for field in ("worstCh.channel", "bestCh.channel", "gap.segment_a", "gap.segment_b"):
+        for m in re.finditer(re.escape(field), js):
+            line = js[js.rfind("\n", 0, m.start()) + 1: js.find("\n", m.end())]
+            if "setHTML" in line or "decision(" in line or '"<' in line or "parts.push" in line:
+                assert f"esc({field}" in line or f"esc(cap({field}" in line, (
+                    f"{field} reaches innerHTML unescaped: {line.strip()}")
 
 
 def test_every_mount_target_exists_in_the_html():

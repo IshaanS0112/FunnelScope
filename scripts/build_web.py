@@ -156,6 +156,7 @@ def main() -> int:
         "significance_tests": m["significance_tests"],
         "multiple_comparisons": m.get("multiple_comparisons"),
         "segment_gap": m.get("segment_gap"),
+        "segment_gaps_all": m.get("segment_gaps_all", []),
         "retention": retention_block(cohorts, overview),
         "acquisition": acquisition_block(by_source, revenue),
         "rice": m["rice"],

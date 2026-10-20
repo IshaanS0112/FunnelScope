@@ -957,6 +957,47 @@ window.FUNNELSCOPE_DATA = {
   "p_value": 6.806513706255698e-25,
   "p_value_adjusted": 2.0419541118767095e-24
  },
+ "segment_gaps_all": [
+  {
+   "segment_a": "desktop",
+   "segment_b": "mobile",
+   "conversion_a": 0.03774747276749461,
+   "conversion_b": 0.03950146991842988,
+   "gap_pp": 0.17539971509352714,
+   "additional_purchases_if_closed": 62.63699225704948,
+   "value_if_closed": 3985.4051828486163,
+   "segment_type": "device",
+   "significant": false,
+   "p_value": 0.27357640902512054,
+   "p_value_adjusted": 0.27357640902512054
+  },
+  {
+   "segment_a": "new",
+   "segment_b": "returning",
+   "conversion_a": 0.03595316226442161,
+   "conversion_b": 0.06399270738377393,
+   "gap_pp": 2.803954511935231,
+   "additional_purchases_if_closed": 1563.6813126709203,
+   "value_if_closed": 99492.38274832464,
+   "segment_type": "visitor type",
+   "significant": true,
+   "p_value": 6.806513706255698e-25,
+   "p_value_adjusted": 2.0419541118767095e-24
+  },
+  {
+   "segment_a": "<Other> / <Other>",
+   "segment_b": "(data deleted) / (data deleted)",
+   "conversion_a": 0.03569224439415758,
+   "conversion_b": 0.05695364238410596,
+   "gap_pp": 2.126139798994838,
+   "additional_purchases_if_closed": 206.70331125827818,
+   "value_if_closed": 13151.915797936457,
+   "segment_type": "channel",
+   "significant": true,
+   "p_value": 3.062502353201e-06,
+   "p_value_adjusted": 6.125004706402e-06
+  }
+ ],
  "retention": {
   "weeks": [
    0,
