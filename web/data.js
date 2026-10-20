@@ -1541,5 +1541,569 @@ window.FUNNELSCOPE_DATA = {
    "rice_score": 199.21
   }
  ],
+ "experiment": {
+  "window_days": 92,
+  "alpha": 0.05,
+  "power": 0.8,
+  "min_days": 14,
+  "max_days": 28,
+  "plans": [
+   {
+    "step_from": "viewed",
+    "step_to": "added_to_cart",
+    "primary_metric": "Viewed an item → added to cart rate",
+    "baseline": 0.18144713642003527,
+    "eligible_per_day": 665.7826086956521,
+    "smallest_detectable_lift": 0.02,
+    "planned_days": 21,
+    "n_per_arm": 6072,
+    "guardrails": [
+     {
+      "metric": "Added to cart → began checkout rate",
+      "baseline": 0.37493251754543816,
+      "rule": "must not fall",
+      "why": "the extra shoppers this step lets through are the least committed"
+     },
+     {
+      "metric": "Average order value",
+      "baseline": 63.62702037947997,
+      "rule": "must not fall",
+      "why": "more orders into smaller baskets is not a win"
+     }
+    ],
+    "grid": [
+     {
+      "lift": 0.005,
+      "n_per_arm": 94253,
+      "days": 283.134460915562,
+      "planned_days": 287,
+      "fits": false,
+      "worth_up_to": 4130.8246294677365
+     },
+     {
+      "lift": 0.01,
+      "n_per_arm": 23808,
+      "days": 71.5188402011363,
+      "planned_days": 77,
+      "fits": false,
+      "worth_up_to": 8261.649258935473
+     },
+     {
+      "lift": 0.015,
+      "n_per_arm": 10688,
+      "days": 32.106576111800436,
+      "planned_days": 35,
+      "fits": false,
+      "worth_up_to": 12392.47388840321
+     },
+     {
+      "lift": 0.02,
+      "n_per_arm": 6072,
+      "days": 18.240188075491414,
+      "planned_days": 21,
+      "fits": true,
+      "worth_up_to": 16523.298517870946
+     },
+     {
+      "lift": 0.025,
+      "n_per_arm": 3923,
+      "days": 11.78462744073663,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 20654.123147338683
+     },
+     {
+      "lift": 0.03,
+      "n_per_arm": 2750,
+      "days": 8.26095474433488,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 24784.94777680642
+     },
+     {
+      "lift": 0.035,
+      "n_per_arm": 2039,
+      "days": 6.125122444981389,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 28915.772406274158
+     },
+     {
+      "lift": 0.04,
+      "n_per_arm": 1575,
+      "days": 4.73127408084634,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 33046.59703574189
+     },
+     {
+      "lift": 0.045,
+      "n_per_arm": 1256,
+      "days": 3.773003330503494,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 37177.42166520963
+     },
+     {
+      "lift": 0.05,
+      "n_per_arm": 1026,
+      "days": 3.0820871155227585,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 41308.24629467737
+     },
+     {
+      "lift": 0.055,
+      "n_per_arm": 855,
+      "days": 2.568405929602299,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 45439.070924145104
+     },
+     {
+      "lift": 0.06,
+      "n_per_arm": 724,
+      "days": 2.1748840854176192,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 49569.89555361284
+     },
+     {
+      "lift": 0.065,
+      "n_per_arm": 622,
+      "days": 1.86847776399138,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 53700.72018308057
+     },
+     {
+      "lift": 0.07,
+      "n_per_arm": 541,
+      "days": 1.6251550969764255,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 57831.544812548316
+     },
+     {
+      "lift": 0.075,
+      "n_per_arm": 475,
+      "days": 1.4268921831123882,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 61962.36944201605
+     },
+     {
+      "lift": 0.08,
+      "n_per_arm": 420,
+      "days": 1.2616730882256906,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 66093.19407148378
+     },
+     {
+      "lift": 0.085,
+      "n_per_arm": 375,
+      "days": 1.126493828772938,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 70224.01870095154
+     },
+     {
+      "lift": 0.09,
+      "n_per_arm": 337,
+      "days": 1.012342454123947,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 74354.84333041926
+     },
+     {
+      "lift": 0.095,
+      "n_per_arm": 305,
+      "days": 0.916214980735323,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 78485.667959887
+     },
+     {
+      "lift": 0.1,
+      "n_per_arm": 277,
+      "days": 0.8321034415202769,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 82616.49258935473
+     }
+    ]
+   },
+   {
+    "step_from": "added_to_cart",
+    "step_to": "began_checkout",
+    "primary_metric": "Added to cart → began checkout rate",
+    "baseline": 0.37493251754543816,
+    "eligible_per_day": 120.80434782608695,
+    "smallest_detectable_lift": 0.05,
+    "planned_days": 28,
+    "n_per_arm": 1506,
+    "guardrails": [
+     {
+      "metric": "Began checkout → purchased rate",
+      "baseline": 0.5653947684185265,
+      "rule": "must not fall",
+      "why": "the extra shoppers this step lets through are the least committed"
+     },
+     {
+      "metric": "Average order value",
+      "baseline": 63.62702037947997,
+      "rule": "must not fall",
+      "why": "more orders into smaller baskets is not a win"
+     }
+    ],
+    "grid": [
+     {
+      "lift": 0.005,
+      "n_per_arm": 147544,
+      "days": 2442.6935396796835,
+      "planned_days": 2443,
+      "fits": false,
+      "worth_up_to": 1999.096544031924
+     },
+     {
+      "lift": 0.01,
+      "n_per_arm": 36980,
+      "days": 612.2296202987224,
+      "planned_days": 616,
+      "fits": false,
+      "worth_up_to": 3998.193088063848
+     },
+     {
+      "lift": 0.015,
+      "n_per_arm": 16477,
+      "days": 272.788195069282,
+      "planned_days": 273,
+      "fits": false,
+      "worth_up_to": 5997.289632095772
+     },
+     {
+      "lift": 0.02,
+      "n_per_arm": 9290,
+      "days": 153.80241137304301,
+      "planned_days": 154,
+      "fits": false,
+      "worth_up_to": 7996.386176127696
+     },
+     {
+      "lift": 0.025,
+      "n_per_arm": 5960,
+      "days": 98.6719452942235,
+      "planned_days": 105,
+      "fits": false,
+      "worth_up_to": 9995.48272015962
+     },
+     {
+      "lift": 0.03,
+      "n_per_arm": 4148,
+      "days": 68.6730250134965,
+      "planned_days": 70,
+      "fits": false,
+      "worth_up_to": 11994.579264191543
+     },
+     {
+      "lift": 0.035,
+      "n_per_arm": 3054,
+      "days": 50.56109411552996,
+      "planned_days": 56,
+      "fits": false,
+      "worth_up_to": 13993.675808223466
+     },
+     {
+      "lift": 0.04,
+      "n_per_arm": 2343,
+      "days": 38.789994601403635,
+      "planned_days": 42,
+      "fits": false,
+      "worth_up_to": 15992.772352255392
+     },
+     {
+      "lift": 0.045,
+      "n_per_arm": 1855,
+      "days": 30.710815188051107,
+      "planned_days": 35,
+      "fits": false,
+      "worth_up_to": 17991.868896287313
+     },
+     {
+      "lift": 0.05,
+      "n_per_arm": 1506,
+      "days": 24.932877451862517,
+      "planned_days": 28,
+      "fits": true,
+      "worth_up_to": 19990.96544031924
+     },
+     {
+      "lift": 0.055,
+      "n_per_arm": 1247,
+      "days": 20.644952312398775,
+      "planned_days": 21,
+      "fits": true,
+      "worth_up_to": 21990.06198435116
+     },
+     {
+      "lift": 0.06,
+      "n_per_arm": 1050,
+      "days": 17.383480295123267,
+      "planned_days": 21,
+      "fits": true,
+      "worth_up_to": 23989.158528383086
+     },
+     {
+      "lift": 0.065,
+      "n_per_arm": 896,
+      "days": 14.833903185171856,
+      "planned_days": 21,
+      "fits": true,
+      "worth_up_to": 25988.255072415006
+     },
+     {
+      "lift": 0.07,
+      "n_per_arm": 774,
+      "days": 12.814108331833724,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 27987.351616446933
+     },
+     {
+      "lift": 0.075,
+      "n_per_arm": 675,
+      "days": 11.175094475436387,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 29986.448160478856
+     },
+     {
+      "lift": 0.08,
+      "n_per_arm": 595,
+      "days": 9.850638833903185,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 31985.544704510783
+     },
+     {
+      "lift": 0.085,
+      "n_per_arm": 527,
+      "days": 8.724851538599964,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 33984.641248542706
+     },
+     {
+      "lift": 0.09,
+      "n_per_arm": 471,
+      "days": 7.797732589526723,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 35983.737792574626
+     },
+     {
+      "lift": 0.095,
+      "n_per_arm": 423,
+      "days": 7.003059204606802,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 37982.83433660655
+     },
+     {
+      "lift": 0.1,
+      "n_per_arm": 383,
+      "days": 6.340831383840202,
+      "planned_days": 14,
+      "fits": true,
+      "worth_up_to": 39981.93088063848
+     }
+    ]
+   },
+   {
+    "step_from": "began_checkout",
+    "step_to": "purchased",
+    "primary_metric": "Began checkout → purchased rate",
+    "baseline": 0.5653947684185265,
+    "eligible_per_day": 45.29347826086956,
+    "smallest_detectable_lift": 0.08,
+    "planned_days": 28,
+    "n_per_arm": 585,
+    "guardrails": [
+     {
+      "metric": "Average order value",
+      "baseline": 63.62702037947997,
+      "rule": "must not fall",
+      "why": "more orders into smaller baskets is not a win"
+     }
+    ],
+    "grid": [
+     {
+      "lift": 0.005,
+      "n_per_arm": 154082,
+      "days": 6803.716822654188,
+      "planned_days": 6804,
+      "fits": false,
+      "worth_up_to": 1325.6689696064652
+     },
+     {
+      "lift": 0.01,
+      "n_per_arm": 38466,
+      "days": 1698.5226781857452,
+      "planned_days": 1701,
+      "fits": false,
+      "worth_up_to": 2651.3379392129305
+     },
+     {
+      "lift": 0.015,
+      "n_per_arm": 17070,
+      "days": 753.7508999280058,
+      "planned_days": 756,
+      "fits": false,
+      "worth_up_to": 3977.0069088193954
+     },
+     {
+      "lift": 0.02,
+      "n_per_arm": 9587,
+      "days": 423.32805375569956,
+      "planned_days": 427,
+      "fits": false,
+      "worth_up_to": 5302.675878425861
+     },
+     {
+      "lift": 0.025,
+      "n_per_arm": 6126,
+      "days": 270.50251979841613,
+      "planned_days": 273,
+      "fits": false,
+      "worth_up_to": 6628.344848032327
+     },
+     {
+      "lift": 0.03,
+      "n_per_arm": 4247,
+      "days": 187.53251739860812,
+      "planned_days": 189,
+      "fits": false,
+      "worth_up_to": 7954.013817638791
+     },
+     {
+      "lift": 0.035,
+      "n_per_arm": 3115,
+      "days": 137.54739620830335,
+      "planned_days": 140,
+      "fits": false,
+      "worth_up_to": 9279.682787245258
+     },
+     {
+      "lift": 0.04,
+      "n_per_arm": 2380,
+      "days": 105.09239260859133,
+      "planned_days": 112,
+      "fits": false,
+      "worth_up_to": 10605.351756851722
+     },
+     {
+      "lift": 0.045,
+      "n_per_arm": 1877,
+      "days": 82.88168946484282,
+      "planned_days": 84,
+      "fits": false,
+      "worth_up_to": 11931.020726458186
+     },
+     {
+      "lift": 0.05,
+      "n_per_arm": 1518,
+      "days": 67.02951763858891,
+      "planned_days": 70,
+      "fits": false,
+      "worth_up_to": 13256.689696064654
+     },
+     {
+      "lift": 0.055,
+      "n_per_arm": 1252,
+      "days": 55.28389728821695,
+      "planned_days": 56,
+      "fits": false,
+      "worth_up_to": 14582.358665671118
+     },
+     {
+      "lift": 0.06,
+      "n_per_arm": 1049,
+      "days": 46.320134389248864,
+      "planned_days": 49,
+      "fits": false,
+      "worth_up_to": 15908.027635277582
+     },
+     {
+      "lift": 0.065,
+      "n_per_arm": 892,
+      "days": 39.387568994480446,
+      "planned_days": 42,
+      "fits": false,
+      "worth_up_to": 17233.696604884048
+     },
+     {
+      "lift": 0.07,
+      "n_per_arm": 768,
+      "days": 33.912167026637874,
+      "planned_days": 35,
+      "fits": false,
+      "worth_up_to": 18559.365574490515
+     },
+     {
+      "lift": 0.075,
+      "n_per_arm": 667,
+      "days": 29.45236381089513,
+      "planned_days": 35,
+      "fits": false,
+      "worth_up_to": 19885.034544096976
+     },
+     {
+      "lift": 0.08,
+      "n_per_arm": 585,
+      "days": 25.831533477321816,
+      "planned_days": 28,
+      "fits": true,
+      "worth_up_to": 21210.703513703444
+     },
+     {
+      "lift": 0.085,
+      "n_per_arm": 517,
+      "days": 22.82889368850492,
+      "planned_days": 28,
+      "fits": true,
+      "worth_up_to": 22536.37248330991
+     },
+     {
+      "lift": 0.09,
+      "n_per_arm": 460,
+      "days": 20.311975041996643,
+      "planned_days": 21,
+      "fits": true,
+      "worth_up_to": 23862.04145291637
+     },
+     {
+      "lift": 0.095,
+      "n_per_arm": 412,
+      "days": 18.192464602831773,
+      "planned_days": 21,
+      "fits": true,
+      "worth_up_to": 25187.71042252284
+     },
+     {
+      "lift": 0.1,
+      "n_per_arm": 371,
+      "days": 16.38204943604512,
+      "planned_days": 21,
+      "fits": true,
+      "worth_up_to": 26513.379392129307
+     }
+    ]
+   }
+  ],
+  "practically_testable": [
+   "added_to_cart"
+  ]
+ },
  "reexport_diff": []
 };

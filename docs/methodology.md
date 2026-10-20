@@ -322,6 +322,27 @@ did not, so a borderline result cannot be quoted as if it had.
 
 ---
 
+## 6b. Designing the test
+
+Every recommendation ends in "validate with an A/B test", so the pipeline designs that
+test (`funnelscope/experiment.py`):
+
+- **Primary metric** — the conversion rate of the step being changed, at its measured
+  baseline.
+- **Sample size** — Cohen's h, two-sided, α 0.05, power 0.80, 50/50 split; matches
+  `statsmodels` `NormalIndPower` in the test suite.
+- **Traffic** — users entering the step ÷ the 92-day window.
+- **Duration** — at least 14 days (two weekly cycles, so a weekday pattern cannot pass for
+  a treatment effect) and at most 28.
+- **Guardrails** — the next step's conversion rate (the extra shoppers a fix lets through
+  are the least committed, the same reason sizing is an upper bound) and AOV.
+
+**The finding it produced:** at 666 product viewers a day, a 2-point lift in add-to-cart
+is detectable in three weeks. The steps after it see 121 and 45 shoppers a day, so
+nothing under 5 and 8 points is detectable within four weeks. The option that leads RICE
+is therefore also the only one that can be validated before it ships — testability works
+as a prioritisation input, and checkout changes would have to ship on judgement.
+
 ## 7. RICE prioritisation
 
 `RICE = (Reach × Impact × Confidence) ÷ Effort`, Intercom's impact scale

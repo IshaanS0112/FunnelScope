@@ -181,6 +181,19 @@ not there.
 
 ---
 
+**How would you test the recommendation?**
+50/50 on the product page, primary metric add-to-cart rate (18.1% baseline). At 666
+viewers a day, the smallest lift detectable in four weeks is 2 points — 6,072 shoppers per
+arm, three weeks. Guardrails: the cart-to-checkout rate and AOV must not fall, because the
+extra shoppers a better product page lets through are the least committed ones.
+
+**Could you test the checkout fixes the same way?**
+Not usefully. Only 121 shoppers a day reach checkout and 45 complete it, so the smallest
+detectable lifts in four weeks are 5 and 8 points. That makes testability a prioritisation
+input: the top RICE option is also the only one this traffic can validate before shipping.
+
+---
+
 ## Retention
 
 **Why did retention look worse for later cohorts?**

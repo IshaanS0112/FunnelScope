@@ -62,11 +62,11 @@
   /* Plain-English names for each step, for sentences rather than chart labels. */
   var STEP = {
     added_to_cart: { short: "view → cart", verb: "between viewing an item and adding it to cart",
-                     stage: "add-to-cart", kpi: "Lost before adding to cart" },
+                     stage: "add-to-cart", kpi: "Lost before adding to cart", button: "Add to cart" },
     began_checkout: { short: "cart → checkout", verb: "between cart and checkout",
-                      stage: "checkout start", kpi: "Lost between cart and checkout" },
+                      stage: "checkout start", kpi: "Lost between cart and checkout", button: "Checkout" },
     purchased: { short: "checkout → purchase", verb: "at checkout", stage: "purchase",
-                 kpi: "Lost at checkout" }
+                 kpi: "Lost at checkout", button: "Purchase" }
   };
   function step(to) { return STEP[to] || { short: to, verb: "at " + to, stage: to, kpi: "Lost at " + to }; }
 
@@ -183,6 +183,7 @@
     { id: "retention", label: "Retention" },
     { id: "value", label: "Value" },
     { id: "decision", label: "Decision" },
+    { id: "test", label: "Test plan" },
     { id: "method", label: "Method" }
   ];
 
@@ -685,7 +686,144 @@
     next.forEach(function (n) { ol.appendChild(el("li", { html: "<span>" + n + "</span>" })); });
   }
 
-  /* ---------------- 07 method ---------------- */
+  /* ---------------- 07 test plan ---------------- */
+
+  /* The planner looks values up from a grid computed in funnelscope/experiment.py.
+   * Moving the slider never does arithmetic, so the page cannot disagree with the memo. */
+  var EXP = D.experiment;
+  var planState = { plan: 0, idx: 0 };
+
+  function planFor(i) { return EXP.plans[i]; }
+
+  function defaultIndex(plan) {
+    var i = plan.grid.findIndex(function (g) { return g.lift === plan.smallest_detectable_lift; });
+    return i >= 0 ? i : 0;
+  }
+
+  function daysChart(plan, selected, W) {
+    var narrow = W < NARROW;
+    var H = 200, L = 36, R = 8, T = 16, B = 30, cap = 90;
+    var s = svg("svg", { viewBox: "0 0 " + W + " " + H, role: "img",
+      "aria-label": "Days needed for each detectable lift" });
+    var n = plan.grid.length;
+    var bw = (W - L - R) / n;
+    var y = function (d) { return T + (1 - Math.min(d, cap) / cap) * (H - T - B); };
+
+    [0, 30, 60, 90].forEach(function (d) {
+      s.appendChild(svg("line", { class: "grid", x1: L, x2: W - R, y1: y(d), y2: y(d) }));
+      s.appendChild(svg("text", { x: L - 6, y: y(d) + 4, "text-anchor": "end", class: "mono-muted",
+        text: d === cap ? cap + "+" : String(d) }));
+    });
+    s.appendChild(svg("line", { class: "zero", x1: L, x2: W - R, y1: y(EXP.max_days), y2: y(EXP.max_days) }));
+    s.appendChild(svg("text", { x: W - R, y: y(EXP.max_days) - 6, "text-anchor": "end",
+      class: "mono-muted", text: EXP.max_days + "-day limit" }));
+
+    plan.grid.forEach(function (g, i) {
+      var h = (H - B) - y(g.days);
+      var bar = svg("rect", { x: L + i * bw + bw * 0.15, y: y(g.days), width: bw * 0.7,
+        height: Math.max(h, 1), rx: 1,
+        fill: i === selected ? ACCENT : (g.fits ? MUTED : FAINT) });
+      bar.appendChild(svg("title", { text: "+" + (g.lift * 100).toFixed(1) + " pts: " +
+        Math.round(g.days) + " days, " + num(g.n_per_arm) + " per arm" }));
+      s.appendChild(bar);
+      var every = narrow ? 4 : 2;
+      var clear = Math.abs(i - selected) > (narrow ? 2 : 1);
+      if ((i % every === 1 && clear) || i === selected) {
+        s.appendChild(svg("text", { x: L + i * bw + bw / 2, y: H - 10, "text-anchor": "middle",
+          class: i === selected ? "accent" : "mono-muted", text: "+" + (g.lift * 100).toFixed(1) }));
+      }
+    });
+    return s;
+  }
+
+  function renderPlanner() {
+    var plan = planFor(planState.plan);
+    var g = plan.grid[planState.idx];
+    document.getElementById("planner-lift").max = plan.grid.length - 1;
+    document.getElementById("planner-lift").value = planState.idx;
+    setHTML("planner-lift-label", "+" + (g.lift * 100).toFixed(1) + " pts");
+
+    var host = document.getElementById("planner-readout");
+    host.innerHTML = "";
+    host.appendChild(kpi("Shoppers needed per arm", num(g.n_per_arm),
+      pct(plan.baseline) + " → " + pct(plan.baseline + g.lift) + " " + step(plan.step_to).stage + " rate"));
+    var len = kpi("Test length at current traffic",
+      g.fits ? g.planned_days + " days" : Math.round(g.days) + " days", "");
+    len.querySelector(".sub").appendChild(el("span", {
+      class: "pill " + (g.fits ? "pill-good" : "pill-warn"),
+      text: g.fits ? "fits a " + EXP.max_days + "-day test" : "over the " + EXP.max_days + "-day limit"
+    }));
+    host.appendChild(len);
+    host.appendChild(kpi("Worth if it works", moneyShort(g.worth_up_to),
+      "upper bound over " + EXP.window_days + " days"));
+    mount("planner-chart", daysChart(plan, planState.idx, widthOf("planner-chart")));
+  }
+
+  function renderTest() {
+    if (!EXP || !EXP.plans || !EXP.plans.length) {
+      document.getElementById("test").style.display = "none";
+      return;
+    }
+    var testable = EXP.practically_testable || [];
+    var first = EXP.plans.filter(function (pl) { return testable.indexOf(pl.step_to) >= 0; })[0];
+
+    setHTML("h-test", first
+      ? "Only the " + step(first.step_to).stage + " fix can be <em>proven</em> in a month"
+      : "At this traffic, <em>no</em> step can be tested in under a month");
+
+    var seg = document.getElementById("planner-step");
+    EXP.plans.forEach(function (pl, i) {
+      var b = el("button", { type: "button", text: step(pl.step_to).button || cap(step(pl.step_to).stage),
+        "aria-pressed": i === 0 ? "true" : "false" });
+      b.addEventListener("click", function () {
+        Array.prototype.forEach.call(seg.children, function (c) { c.setAttribute("aria-pressed", "false"); });
+        b.setAttribute("aria-pressed", "true");
+        planState.plan = i;
+        planState.idx = defaultIndex(pl);
+        renderPlanner();
+      });
+      seg.appendChild(b);
+    });
+    document.getElementById("planner-lift").addEventListener("input", function (e) {
+      planState.idx = Number(e.target.value);
+      renderPlanner();
+    });
+    planState.idx = defaultIndex(EXP.plans[0]);
+    renderPlanner();
+
+    var parts = EXP.plans.map(function (pl) {
+      return step(pl.step_to).stage + " sees " + num(pl.eligible_per_day) + " shoppers a day" +
+        (pl.smallest_detectable_lift
+          ? " — the smallest lift it can detect in four weeks is " +
+            (pl.smallest_detectable_lift * 100).toFixed(0) + " points"
+          : " — too few to detect any lift in four weeks");
+    });
+    setHTML("i-test", cap(parts.join("; ")) + ". <strong>Testability is a prioritisation " +
+      "input:</strong> the option that leads RICE is also the only one that can be validated " +
+      "before it ships. Everything after the cart would have to ship on judgement.");
+
+    if (first) {
+      decision("d-test", "Run a " + (first.planned_days / 7) + "-week, 50/50 test on the product " +
+        "page. Ship only if " + step(first.step_to).stage + " rises by at least " +
+        (first.smallest_detectable_lift * 100).toFixed(0) + " points <em>and</em> no guardrail falls.");
+      mount("guardrails", table(first.guardrails, [
+        { head: "Guardrail — must not fall", html: true, get: function (g) {
+          return esc(g.metric) + '<br><span class="cell-note">' + esc(cap(g.why)) + "</span>";
+        } },
+        { head: "Baseline", num: true, get: function (g) {
+          return g.metric.indexOf("order value") >= 0 ? money(g.baseline) : pct(g.baseline);
+        } }
+      ]));
+    }
+
+    setHTML("m-test", "Sample size by Cohen's h, two-sided, α " + EXP.alpha + ", power " +
+      EXP.power + ", 50/50 split — checked against statsmodels in the test suite. Shoppers a " +
+      "day = users entering the step ÷ " + EXP.window_days + " days. Tests run at least " +
+      EXP.min_days + " days so a weekday pattern cannot pass for a treatment effect, and at " +
+      "most " + EXP.max_days + ".");
+  }
+
+  /* ---------------- 08 method ---------------- */
 
   function renderMethod() {
     setHTML("h-method", "The funnel is computed twice, and the check <em>caught</em> two real-data bugs");
@@ -736,8 +874,7 @@
     var lim = [
       "<b>No cross-device identity.</b> <code>user_pseudo_id</code> is per browser, so a phone-browse, laptop-buy shopper counts as two people — and a returning shopper on a new device looks new. The largest threat to every segment finding.",
       "<b>Recommendations are hypotheses.</b> Sizing figures are upper bounds and no experiment has been run.",
-      "<b>" + Math.round((new Date(D.provenance.window_end) - new Date(D.provenance.window_start)) / 864e5) +
-        " days of data.</b> Enough for funnel work, short for retention; " +
+      "<b>" + (EXP ? EXP.window_days : 92) + " days of data.</b> Enough for funnel work, short for retention; " +
         pct(R.censoring.share_censored, 0) + " of the cohort grid is censored.",
       "<b>Public demo data.</b> Google's obfuscated sample export — channel and product names are redacted, so no merchandising insight is possible."
     ];
@@ -760,6 +897,7 @@
   renderRetention();
   renderValue();
   renderDecision();
+  renderTest();
   renderMethod();
 
   function drawCharts() {
@@ -767,6 +905,9 @@
     mount("forest", forestPlot(widthOf("forest")));
     mount("scatter", scatter(widthOf("scatter")));
     mount("value-chart", valueChart(widthOf("value-chart")));
+    if (EXP && EXP.plans && EXP.plans.length) {
+      mount("planner-chart", daysChart(planFor(planState.plan), planState.idx, widthOf("planner-chart")));
+    }
   }
 
   drawCharts();

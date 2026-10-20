@@ -11,7 +11,7 @@ A product-analytics case study on 4.3 million raw events, written as a decision 
 [![CI](https://github.com/IshaanS0112/FunnelScope/actions/workflows/ci.yml/badge.svg)](https://github.com/IshaanS0112/FunnelScope/actions/workflows/ci.yml)
 ![BigQuery](https://img.shields.io/badge/BigQuery-SQL-15171A)
 ![Python](https://img.shields.io/badge/Python-3.12-15171A)
-![Tests](https://img.shields.io/badge/tests-159_passing-0F8A5F)
+![Tests](https://img.shields.io/badge/tests-175_passing-0F8A5F)
 ![License](https://img.shields.io/badge/license-MIT-5B5F66)
 
 **[Read the memo →](docs/MEMO.md)** · [Live report](https://ishaans0112.github.io/FunnelScope/) · [Methodology](docs/methodology.md) · [Interview defence](docs/INTERVIEW.md)
@@ -29,6 +29,7 @@ A product-analytics case study on 4.3 million raw events, written as a decision 
 | **Not a finding** | Desktop vs mobile: 3.77% vs 3.95%, **p = 0.27 — noise**, so no mobile project |
 | **Largest prize** | Up to **$41k** from a 5-point lift in add-to-cart (upper bound) |
 | **Recommendation** | Rework the product-page add-to-cart path — scores **4.8×** the next option on RICE |
+| **Test plan** | A **+2-point** lift is detectable in **3 weeks** (6,072 shoppers per arm); checkout steps see too little traffic to test |
 
 ## Business question → decision
 
@@ -41,8 +42,9 @@ Each chapter of the report answers one question a product team would actually as
 | 03 | Which channels bring buyers? | Conversion spans 3.6% – 5.7%; volume and quality diverge | Rebalance spend — after checking LTV |
 | 04 | Do shoppers come back? | 4.3% return in week one, yet 22% of purchases need a return visit | Persist the cart across sessions |
 | 05 | What is each fix worth? | $41k / $20k / $13k ceilings by step | Size steps as ceilings, never forecasts |
-| 06 | What do we do first? | Product page leads RICE 23,398 to 4,861 | Ship it behind an A/B test |
-| 07 | Why trust any of this? | Funnel computed two independent ways — agree to zero | Pipeline refuses to publish if they diverge |
+| 06 | What do we do first? | Product page leads RICE 23,398 to 4,861 | Start with the product page |
+| 07 | How do we prove it worked? | Only add-to-cart is testable at this traffic: +2 pts in 3 weeks | 3-week 50/50 test; ship only if guardrails hold |
+| 08 | Why trust any of this? | Funnel computed two independent ways — agree to zero | Pipeline refuses to publish if they diverge |
 
 ## How it works
 
@@ -52,7 +54,8 @@ flowchart LR
     B --> C{Correctness gates}
     C -->|monotonic + two methods agree| D[analyze.py<br/>z-tests · Holm · sizing · RICE]
     C -->|diverge| X[Stop — nothing published]
-    D --> E[metrics.json]
+    D --> T[experiment.py<br/>sample size · duration · guardrails]
+    T --> E[metrics.json]
     E --> F[Decision memo]
     E --> G[Static report site]
     E --> H[Streamlit dashboard]
@@ -76,12 +79,12 @@ flowchart LR
 | Folder | What it holds |
 |---|---|
 | [`sql/`](sql/) | 11 parameterised BigQuery queries — funnel, validation, segments, cohorts, revenue |
-| [`funnelscope/`](funnelscope/) | The only place maths happens: funnel gates, z-tests, Holm, sizing, censoring, RICE |
+| [`funnelscope/`](funnelscope/) | The only place maths happens: funnel gates, z-tests, Holm, sizing, censoring, RICE, test design |
 | [`scripts/`](scripts/) | The pipeline: export → analyse → render memo → build site |
 | [`docs/`](docs/) | **[MEMO.md](docs/MEMO.md)** (the deliverable), methodology, interview defence, query costs |
 | [`web/`](web/) | The report site — plain HTML/CSS/JS, opens from `file://`, deploys to GitHub Pages |
 | [`app/`](app/) | Streamlit dashboard for interactive filtering |
-| [`tests/`](tests/) | 159 tests: SQL static checks, funnel invariants, statistics vs SciPy/statsmodels |
+| [`tests/`](tests/) | 175 tests: SQL static checks, funnel invariants, statistics vs SciPy/statsmodels |
 
 ## Run it
 
@@ -95,7 +98,7 @@ open web/index.html                # the report — no server needed
 
 ## Scope, honestly
 
-This is Google's public obfuscated GA4 sample, not a business problem I found — channel and product names are redacted at source. What is real is the analysis: SQL against GA4's nested schema, a funnel that survives two independent implementations, statistics corrected for multiple comparisons, and recommendations that state their assumptions. Every revenue figure is an upper bound, and nothing here has been A/B tested.
+This is Google's public obfuscated GA4 sample, not a business problem I found — channel and product names are redacted at source. What is real is the analysis: SQL against GA4's nested schema, a funnel that survives two independent implementations, statistics corrected for multiple comparisons, and recommendations that state their assumptions. Every revenue figure is an upper bound, and nothing here has been A/B tested yet — the test plan says how it would be.
 
 ---
 

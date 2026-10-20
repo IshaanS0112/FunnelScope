@@ -11,7 +11,8 @@ cannot be produced from a funnel that failed validation.
     5. sizing, sensitivity sweep, bootstrap intervals
     6. retention with censoring marked
     7. RICE ranking
-    8. diff against the previous export
+    8. a test plan per step: sample size, duration, guardrails
+    9. diff against the previous export
     -> data/processed/metrics.json
 
 Usage:  python scripts/analyze.py
@@ -28,7 +29,7 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from funnelscope import FUNNEL_STAGES, STAGE_LABELS, funnel, io as fio, retention, rice, sizing  # noqa: E402
+from funnelscope import FUNNEL_STAGES, STAGE_LABELS, experiment, funnel, io as fio, retention, rice, sizing  # noqa: E402
 
 METRICS_PATH = fio.PROCESSED_DIR / "metrics.json"
 
@@ -365,7 +366,27 @@ def main() -> int:
     for _, r in ranked.iterrows():
         print(f"  {int(r['rank'])}. {r['name']}  (RICE {r['rice_score']:,.0f})")
 
-    # ---- 8. persist --------------------------------------------------------------
+    # ---- 8. test plans -----------------------------------------------------------
+    # Every recommendation ends in "validate with an A/B test", so design the test:
+    # how big a lift this store's traffic can detect, how long it must run, and what
+    # must not get worse. Window is inclusive — 1 Nov to 31 Jan is 92 days.
+    import datetime as _dt
+    window_days = (_dt.date.fromisoformat(manifest.window_end)
+                   - _dt.date.fromisoformat(manifest.window_start)).days + 1
+    plans = [experiment.plan_for_step(row, st, aov, window_days) for st in FUNNEL_STAGES[1:]]
+    print(f"\nTest plans ({window_days}-day window, two-sided, alpha 0.05, power 0.80):")
+    for pl in plans:
+        if pl.smallest_detectable_lift:
+            print(f"  {pl.primary_metric:<40} {pl.baseline:6.1%} -> +{pl.smallest_detectable_lift * 100:.1f}pt "
+                  f"detectable in {pl.planned_days} days ({pl.n_per_arm:,}/arm, "
+                  f"{pl.eligible_per_day:,.0f} eligible/day)")
+        else:
+            print(f"  {pl.primary_metric:<40} {pl.baseline:6.1%} -> not testable within "
+                  f"{experiment.MAX_DAYS} days at {pl.eligible_per_day:,.0f} eligible/day")
+    testable = [pl.step_to for pl in plans
+                if pl.smallest_detectable_lift is not None and pl.smallest_detectable_lift <= 0.03]
+
+    # ---- 9. persist --------------------------------------------------------------
     metrics = {
         "provenance": {
             "source": manifest.source, "is_real": manifest.is_real,
@@ -417,9 +438,18 @@ def main() -> int:
             "censoring": censoring,
         },
         "rice": ranked.to_dict("records"),
+        "experiment": {
+            "window_days": window_days,
+            "alpha": 0.05,
+            "power": 0.80,
+            "min_days": experiment.MIN_DAYS,
+            "max_days": experiment.MAX_DAYS,
+            "plans": [pl.to_dict() for pl in plans],
+            "practically_testable": testable,
+        },
     }
 
-    # ---- 9. what moved since the last export -------------------------------------
+    # ---- 10. what moved since the last export -------------------------------------
     moved = reexport_diff(metrics, previous_metrics)
     metrics["reexport_diff"] = moved
     if previous_metrics is None:

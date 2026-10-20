@@ -39,6 +39,10 @@ def pct(x: float, places: int = 1) -> str:
     return f"{x * 100:.{places}f}%"
 
 
+STEP_NAMES = {"added_to_cart": "add-to-cart", "began_checkout": "checkout-start",
+              "purchased": "checkout-completion"}
+
+
 def article(rendered: str) -> str:
     """"a" or "an" before a rendered number — "a 81.9% drop" reads as a typo.
 
@@ -170,7 +174,7 @@ def build_tokens(m: dict, author: str) -> dict:
         import datetime as dt
         a = dt.date.fromisoformat(m["provenance"]["window_start"])
         b = dt.date.fromisoformat(m["provenance"]["window_end"])
-        window_days = (b - a).days
+        window_days = (b - a).days + 1  # inclusive: 1 Nov to 31 Jan is 92 days
     except Exception:
         pass
 
@@ -224,7 +228,33 @@ def build_tokens(m: dict, author: str) -> dict:
         tie_sentence = ("**No funnel events share a timestamp**, so the strict ordering "
                         "rule excludes nobody.")
 
+    exp = m.get("experiment") or {}
+    plan_rows = ["| Step tested | Baseline | Smallest lift testable in 4 weeks | Users per arm | Runs for | Guardrails (must not fall) |",
+                 "|---|---:|---:|---:|---:|---|"]
+    for pl in exp.get("plans", []):
+        lift = pl.get("smallest_detectable_lift")
+        guards = "; ".join(g["metric"] for g in pl.get("guardrails", []))
+        plan_rows.append(
+            f"| {pl['primary_metric']} | {pct(pl['baseline'])} | "
+            + (f"+{lift * 100:.0f} pts" if lift else "not testable") + " | "
+            + (f"{pl['n_per_arm']:,}" if pl.get("n_per_arm") else "—") + " | "
+            + (f"{pl['planned_days']} days" if pl.get("planned_days") else "—") + f" | {guards} |")
+
+    testable = exp.get("practically_testable", [])
+    top_step = next((pl for pl in exp.get("plans", []) if pl["step_to"] in testable), None)
+    if top_step:
+        test_sentence = (
+            f"**Only the {STEP_NAMES.get(top_step['step_to'], top_step['step_to'])} fix is testable at "
+            f"this traffic**: a {top_step['smallest_detectable_lift'] * 100:.0f}-point lift in "
+            f"{top_step['planned_days'] // 7} weeks. Later steps see too few shoppers, so checkout "
+            f"changes ship on judgement.")
+    else:
+        test_sentence = ("**No step can detect a lift under three points within four weeks at "
+                         "this traffic**, so every change here would ship on judgement.")
+
     return {
+        "test_plan_table": "\n".join(plan_rows),
+        "test_plan_sentence": test_sentence,
         "author": author,
         "gap_headline": gap_headline,
         "priority_bullet": priority_bullet,

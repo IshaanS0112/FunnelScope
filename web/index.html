@@ -138,9 +138,36 @@
     </div>
   </section>
 
-  <section class="chapter wrap" id="method">
+  <section class="chapter wrap" id="test">
     <div class="chapter-head">
       <span class="chapter-num">07</span>
+      <div>
+        <p class="question"><b>Business question</b> — How would we prove the fix worked before rolling it out?</p>
+        <h2 id="h-test"></h2>
+      </div>
+    </div>
+    <div class="chapter-body">
+      <div class="figure planner" id="planner">
+        <div class="planner-controls">
+          <div class="seg" id="planner-step" role="group" aria-label="Step to test"></div>
+          <label class="slider">
+            <span>Lift to detect <b id="planner-lift-label"></b></span>
+            <input type="range" id="planner-lift" min="0" step="1" aria-describedby="planner-readout">
+          </label>
+        </div>
+        <div class="planner-readout" id="planner-readout" aria-live="polite"></div>
+        <div id="planner-chart"></div>
+      </div>
+      <p class="interpret" id="i-test"></p>
+      <div class="decision" id="d-test"></div>
+      <div class="figure table-scroll" id="guardrails"></div>
+      <p class="method" id="m-test"></p>
+    </div>
+  </section>
+
+  <section class="chapter wrap" id="method">
+    <div class="chapter-head">
+      <span class="chapter-num">08</span>
       <div>
         <p class="question"><b>Business question</b> — Why should anyone trust these numbers?</p>
         <h2 id="h-method"></h2>

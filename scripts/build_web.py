@@ -160,6 +160,7 @@ def main() -> int:
         "retention": retention_block(cohorts, overview),
         "acquisition": acquisition_block(by_source, revenue),
         "rice": m["rice"],
+        "experiment": m.get("experiment"),
         "reexport_diff": m.get("reexport_diff", []),
     }
 

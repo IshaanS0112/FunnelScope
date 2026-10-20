@@ -54,7 +54,7 @@ Sizing model: `users entering × improvement_pp × P(purchase | next stage) × A
 
 **Upper bounds, not forecasts.** The model applies stage completers' purchase rate to non-completers; recovered users almost certainly convert worse. The intervals price sampling variation only — not that assumption, which dominates the error.
 
-**Sizing prices the stages, it does not re-rank them.** Every purchaser passed every stage, so `P(purchase | stage j) = purchases ÷ users at stage j` and recoverable revenue is a monotone function of step conversion. Ranking by dollars and by worst drop-off are the same ordering, necessarily (verified: `True`) — treating them as two findings double-counts one fact. Effort re-ranks the work; that is the RICE table's job. The ranking also holds across the improvement assumption:
+**Sizing prices the stages; it cannot re-rank them.** Every purchaser passed every stage, so recoverable revenue is a monotone function of step conversion: ranking by dollars and by worst drop-off are the same ordering (verified: `True`). Effort re-ranks the work — the RICE table's job. The ranking holds across the improvement assumption:
 
 | Stage | +1pp | +2pp | +5pp | +10pp |
 |---|---:|---:|---:|---:|
@@ -73,7 +73,17 @@ Sizing model: `users entering × improvement_pp × P(purchase | next stage) × A
 
 **Why #1 ranks first:** Largest absolute loss sits between viewing an item and adding one, and it is the widest step in the funnel by a wide margin. The visitor type split narrows where to start: new converts 2.80pp below returning, which survives correction. *Assumption to challenge:* Assumes the loss is friction on the product page rather than browsing intent — many of these users never intended to buy today. Untested; an A/B test on the product page settles it.
 
-Reach is measured; impact, effort and confidence are judgement, stated so you can change one and watch the ranking move.
+Reach is measured; impact, effort and confidence are stated judgement — change one and watch the ranking move.
+
+## How I'd test it
+
+| Step tested | Baseline | Smallest lift testable in 4 weeks | Users per arm | Runs for | Guardrails (must not fall) |
+|---|---:|---:|---:|---:|---|
+| Viewed an item → added to cart rate | 18.1% | +2 pts | 6,072 | 21 days | Added to cart → began checkout rate; Average order value |
+| Added to cart → began checkout rate | 37.5% | +5 pts | 1,506 | 28 days | Began checkout → purchased rate; Average order value |
+| Began checkout → purchased rate | 56.5% | +8 pts | 585 | 28 days | Average order value |
+
+**Only the add-to-cart fix is testable at this traffic**: a 2-point lift in 3 weeks. Later steps see too few shoppers, so checkout changes ship on judgement.
 
 ## What I'd need to know next
 
@@ -81,7 +91,7 @@ This data records **what** users did, not **why**.
 
 1. **Why new converts worse than returning.** Whether it is friction or a difference in intent is not answerable from event counts. Session recordings on that cohort would settle it.
 2. **A cart-abandonment exit survey.** Cart loss looks like friction; price shock has the same signature and a different fix.
-3. **An A/B test on the top recommendation.** Everything above is a hypothesis with a size attached.
+3. **The test above.** Until it runs, every figure here is a hypothesis with a size attached.
 
 ## Limitations
 
@@ -89,7 +99,7 @@ Ranked by threat to the conclusions, not by ease of admission:
 
 1. **No cross-device identity.** `user_pseudo_id` is per browser, so a phone-browse / laptop-buy user is two users, one of whom never converts. That distorts every segment comparison by an unknown amount — the one limitation that could change what I do first.
 2. **Recommendations are hypotheses.** No A/B test has been run; the ranking is reproducible from stated inputs, not a result.
-3. **91 days, 54% of the retention grid right-censored** and excluded rather than zeroed — late cohorts are truncated, not worse.
+3. **92 days, 54% of the retention grid right-censored** and excluded rather than zeroed — late cohorts are truncated, not worse.
 4. **1,422 users (13% of the cart stage) are excluded by the strict ordering rule** — GA4 stamps every event in one request with the same microsecond, so carting from a listing ties with the view. Under `>=` the stage reads 12,536. Strict is the conservative reading.
 5. **Public demo data,** obfuscated at source — not a problem I uncovered, and channel and item names are redacted, so no merchandising insight. Funnel and retention mechanics are unaffected.
 

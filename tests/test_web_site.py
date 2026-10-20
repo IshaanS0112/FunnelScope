@@ -178,3 +178,14 @@ def test_build_web_is_reproducible():
                             capture_output=True, text=True, cwd=REPO_ROOT)
     assert result.returncode == 0, result.stderr
     assert DATA_JS.read_text() == before
+
+
+def test_test_plan_chapter_has_a_precomputed_grid():
+    """The planner only looks values up; the grid must come from the pipeline."""
+    b = bundle()
+    exp = b.get("experiment")
+    assert exp and exp["plans"], "web/data.js has no experiment plans"
+    for plan in exp["plans"]:
+        assert plan["grid"], f"no grid for {plan['step_to']}"
+        assert {"lift", "n_per_arm", "days", "fits", "worth_up_to"} <= set(plan["grid"][0])
+    assert re.search(r'<section[^>]+id="test"', INDEX.read_text())

@@ -39,7 +39,7 @@ Sizing model: `users entering × improvement_pp × P(purchase | next stage) × A
 
 **Upper bounds, not forecasts.** The model applies stage completers' purchase rate to non-completers; recovered users almost certainly convert worse. The intervals price sampling variation only — not that assumption, which dominates the error.
 
-**Sizing prices the stages, it does not re-rank them.** Every purchaser passed every stage, so `P(purchase | stage j) = purchases ÷ users at stage j` and recoverable revenue is a monotone function of step conversion. Ranking by dollars and by worst drop-off are the same ordering, necessarily (verified: `{{sizing_equivalence}}`) — treating them as two findings double-counts one fact. Effort re-ranks the work; that is the RICE table's job. The ranking also holds across the improvement assumption:
+**Sizing prices the stages; it cannot re-rank them.** Every purchaser passed every stage, so recoverable revenue is a monotone function of step conversion: ranking by dollars and by worst drop-off are the same ordering (verified: `{{sizing_equivalence}}`). Effort re-ranks the work — the RICE table's job. The ranking holds across the improvement assumption:
 
 {{sensitivity_table}}
 
@@ -49,7 +49,13 @@ Sizing model: `users entering × improvement_pp × P(purchase | next stage) × A
 
 {{rice_reasoning}}
 
-Reach is measured; impact, effort and confidence are judgement, stated so you can change one and watch the ranking move.
+Reach is measured; impact, effort and confidence are stated judgement — change one and watch the ranking move.
+
+## How I'd test it
+
+{{test_plan_table}}
+
+{{test_plan_sentence}}
 
 ## What I'd need to know next
 
@@ -57,7 +63,7 @@ This data records **what** users did, not **why**.
 
 1. {{next_investigation}}
 2. **A cart-abandonment exit survey.** Cart loss looks like friction; price shock has the same signature and a different fix.
-3. **An A/B test on the top recommendation.** Everything above is a hypothesis with a size attached.
+3. **The test above.** Until it runs, every figure here is a hypothesis with a size attached.
 
 ## Limitations
 
