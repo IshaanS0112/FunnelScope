@@ -10,6 +10,7 @@ The dashboard supports the memo; it is not the deliverable.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
 from pathlib import Path
@@ -26,7 +27,7 @@ st.set_page_config(page_title="FunnelScope", page_icon="📉", layout="wide")
 
 # Paper theme: accent for the series that carries the point, greys for context.
 PALETTE = ["#1D3FD8", "#8C9097", "#C9C5B9"]
-ACCENT, MUTED, FAINT = PALETTE
+ACCENT, _, FAINT = PALETTE
 
 
 @st.cache_data
@@ -38,10 +39,8 @@ def load_all():
         "01_event_overview", "02_funnel_overall", "03_funnel_by_device",
         "04_funnel_by_source", "05_funnel_by_visitor_type",
         "06_cohort_retention", "07_revenue_by_segment")}
-    try:  # only present once sql/09 has been exported
+    with contextlib.suppress(FileNotFoundError):  # only once sql/09 is exported
         data["09_funnel_session_scoped"] = fio.load("09_funnel_session_scoped")
-    except FileNotFoundError:
-        pass
     return manifest, metrics, data
 
 

@@ -111,7 +111,8 @@ def preserve_artifacts():
 
 
 @pytest.mark.slow
-def test_pipeline_runs_end_to_end(tmp_path, preserve_artifacts):
+@pytest.mark.usefixtures("preserve_artifacts")
+def test_pipeline_runs_end_to_end():
     """fixture -> analyze -> memo -> site, as a subprocess chain, exactly as a user
     would run it. Chained as subprocesses rather than function calls so an import-time
     or CLI regression is caught too."""

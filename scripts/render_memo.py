@@ -90,7 +90,7 @@ def build_tokens(m: dict, author: str) -> dict:
                         f"| {money(o['recoverable_revenue'])} | {ci} |")
 
     sens = m["sensitivity"]
-    improvements = [k for k in sens[0].keys() if k != "to_stage"]
+    improvements = [k for k in sens[0] if k != "to_stage"]
     sens_rows = ["| Stage | " + " | ".join(f"+{float(i) * 100:.0f}pp" for i in improvements) + " |",
                  "|---" + "|---:" * len(improvements) + "|"]
     for r in sens:

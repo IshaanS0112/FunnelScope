@@ -75,10 +75,6 @@ INTERVENTION_CATALOG = {
 }
 
 
-def _row(df: pd.DataFrame, value: str) -> pd.Series:
-    return df[df["segment_value"] == value].iloc[0]
-
-
 def _headline_scalars(m: dict) -> dict:
     """The few numbers whose movement between exports is worth reporting.
 
@@ -191,7 +187,7 @@ def main() -> int:
     worst = funnel.worst_step(row)
     aov = sizing.aov_from_revenue(revenue)
 
-    print(f"Funnel: " + "  ->  ".join(
+    print("Funnel: " + "  ->  ".join(
         f"{STAGE_LABELS[s]} {int(row[s]):,}" for s in FUNNEL_STAGES))
     print(f"End-to-end conversion: {row['purchased'] / row['viewed'] * 100:.2f}%")
     print(f"Steepest step drop-off: {STAGE_LABELS[worst.from_stage]} -> "

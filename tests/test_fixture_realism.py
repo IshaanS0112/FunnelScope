@@ -7,7 +7,6 @@ was wrong -- and the divergence was only found when the real BigQuery export fai
 gate. These tests exist so that cannot happen twice.
 """
 
-import subprocess
 import sys
 from pathlib import Path
 

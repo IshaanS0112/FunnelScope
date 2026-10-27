@@ -11,7 +11,6 @@ the cross-validation gate is genuinely exercised rather than trivially satisfied
 
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -127,10 +126,8 @@ def simulate(rng: np.random.Generator) -> pd.DataFrame:
             if extra <= window_end_us:
                 emit("view_item", extra)
         if did_cart[i]:
-            if rng.random() < P_TIED_CART:
-                t = t0  # added from the listing: same request, same microsecond
-            else:
-                t = advance("add_to_cart", t)
+            # carting from the listing ties with the view: same request, same microsecond
+            t = t0 if rng.random() < P_TIED_CART else advance("add_to_cart", t)
             emit("add_to_cart", t)
             if rng.random() < P_REPEAT_CART:
                 again = t + int(rng.integers(60_000_000, 3 * day_us))

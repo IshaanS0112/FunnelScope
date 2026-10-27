@@ -4,21 +4,24 @@
 
 # FunnelScope
 
-**Where shoppers leave a GA4 ecommerce funnel, what it is worth, and what to fix first.**
-A product-analytics case study on 4.3 million raw GA4 events, delivered as a decision memo
-rather than a dashboard.
+**Where shoppers leave a GA4 ecommerce funnel, what that is worth, and what to fix first.**
+
+A product-analytics case study on 4.3 million raw Google Analytics 4 events, queried in
+BigQuery and delivered as a decision memo — every finding ends in a recommendation, and
+every recommendation ends in a test plan.
 
 [![Live report](https://img.shields.io/badge/live_report-open-1D3FD8)](https://ishaans0112.github.io/FunnelScope/)
-[![CI](https://github.com/Ishaana0112/FunnelScope/actions/workflows/ci.yml/badge.svg)](https://github.com/Ishaana0112/FunnelScope/actions/workflows/ci.yml)
+[![CI](https://github.com/IshaanS0112/FunnelScope/actions/workflows/ci.yml/badge.svg)](https://github.com/IshaanS0112/FunnelScope/actions/workflows/ci.yml)
 ![Tests](https://img.shields.io/badge/tests-175_passing-0F8A5F)
+![BigQuery](https://img.shields.io/badge/BigQuery-SQL-15171A)
 ![Python](https://img.shields.io/badge/Python-3.12-15171A)
 ![License](https://img.shields.io/badge/license-MIT-5B5F66)
 
-**[Read the memo →](docs/MEMO.md)** · [Live report](https://ishaans0112.github.io/FunnelScope/) · [Methodology](docs/methodology.md) · [Interview defence](docs/INTERVIEW.md)
+**[Live report](https://ishaans0112.github.io/FunnelScope/)** · [Decision memo](docs/MEMO.md) · [Methodology](docs/methodology.md) · [Interview defence sheet](docs/INTERVIEW.md)
 
 ---
 
-## Results snapshot
+## The answer in 30 seconds
 
 | | |
 |---|---|
@@ -28,94 +31,117 @@ rather than a dashboard.
 | **Real segment gap** | Returning shoppers convert at **1.8×** new ones (6.40% vs 3.60%, adjusted p = 2e-24) |
 | **Not a finding** | Desktop vs mobile: 3.77% vs 3.95%, **p = 0.27** — noise, so no mobile project |
 | **Largest prize** | Up to **$41k** from a 5-point lift in add-to-cart (upper bound) |
-| **Test plan** | A **+2-point** lift is detectable in **3 weeks** (6,072 shoppers per arm) |
-| **Recommendation** | Rework the product-page add-to-cart path — 4.8× the next option on RICE |
+| **What to do first** | Rework the product-page add-to-cart path — scores **4.8×** the next option on RICE |
+| **How to prove it** | 3-week 50/50 test; detects a **+2-point** lift with 6,072 shoppers per arm |
 
-## Business question → decision
+---
 
-| # | Business question | What the data says | Decision |
-|---|---|---|---|
-| 01 | Where do shoppers leave? | 81.9% drop before cart; later steps keep 37% and 57% | Fix the product page before checkout |
-| 02 | Is the loss concentrated in a segment? | New vs returning is real; device is noise | Don't fund a mobile-specific fix |
-| 03 | Which channels bring buyers? | Conversion spans 3.6% – 5.7% | Rebalance spend, after checking lifetime value |
-| 04 | Do shoppers come back? | 4.3% return in week one; 22% of purchases need a return visit | Persist the cart across sessions |
-| 05 | What is each fix worth? | $41k / $20k / $13k ceilings by step | Treat as ceilings, never forecasts |
-| 06 | What do we do first? | Product page leads RICE 23,398 to 4,861 | Start with the product page |
-| 07 | How do we prove it worked? | Only add-to-cart is testable at this traffic | 3-week 50/50 test; ship only if guardrails hold |
-| 08 | Why trust any of this? | Funnel computed two independent ways, agreeing exactly | Pipeline refuses to publish if they diverge |
+## The analysis, step by step
+
+Each step answers one question a product team would ask, and ends in a decision.
+
+### 1 · Where do shoppers leave?
+
+<img src="docs/screenshots/funnel.png" alt="Ordered funnel bar chart" width="100%">
+
+The funnel is **ordered**: each step must happen after the one before, and each stage
+re-checks every earlier condition — otherwise the query silently reports more checkouts than
+carts. **81.9% of viewers never add to cart**, while the later steps keep 37% and 57%.
+→ **Fix the product page before checkout.**
+
+### 2 · Is the loss concentrated in a segment?
+
+<img src="docs/screenshots/segments.png" alt="Forest plot of segment gaps with 95% confidence intervals" width="100%">
+
+Every segment gap is tested with a two-proportion z-test and corrected for running several
+comparisons (Holm–Bonferroni). Returning shoppers really do convert better. The device gap
+**crosses zero** — it is noise, despite 60,000 users.
+→ **Don't fund a mobile-specific fix; target first-time shoppers.**
+
+### 3 · Do shoppers come back?
+
+<img src="docs/screenshots/retention.png" alt="Weekly cohort retention heatmap with censored cells hatched" width="100%">
+
+Only 4.3% return the following week, yet **22% of purchases need a second visit**. Hatched
+cells are **right-censored** — a January cohort cannot show week-8 retention because week 8
+is outside the data — so they are excluded rather than read as a collapse.
+→ **Keep the cart across sessions.**
+
+### 4 · What should we do first — and how do we prove it?
+
+<img src="docs/screenshots/testplan.png" alt="Interactive A/B test planner" width="100%">
+
+Opportunity sizing turns each step into a dollar ceiling; RICE (Reach × Impact × Confidence ÷
+Effort) ranks the fixes. Then the pipeline **designs the A/B test**: sample size from the
+measured baseline, duration from real traffic, and guardrails that must not fall. It found
+that **only the add-to-cart fix is testable at this traffic** — checkout steps see 121 and 45
+shoppers a day, too few to detect anything under 5 and 8 points in a month.
+→ **Run a 3-week test on the product page; ship only if the guardrails hold.**
+
+---
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    A[(GA4 export<br/>BigQuery)] -->|11 SQL queries<br/>2.7 GB| B[CSV exports<br/>+ provenance manifest]
-    B --> C{Correctness gates}
-    C -->|monotonic and methods agree| D[analyze.py<br/>z-tests · Holm · sizing · RICE]
-    C -->|diverge| X[Stop: nothing published]
-    D --> T[experiment.py<br/>sample size · duration · guardrails]
+    A[(GA4 export<br/>BigQuery)] -->|11 SQL queries · 2.7 GB| B[CSV exports<br/>+ provenance stamp]
+    B --> C{Correctness<br/>gates}
+    C -->|pass| D[Statistics · sizing<br/>RICE · test design]
+    C -->|fail| X[Stop — nothing<br/>is published]
     D --> E[metrics.json]
-    T --> E
     E --> F[Decision memo]
-    E --> G[Static report site]
+    E --> G[Report website]
     E --> H[Streamlit dashboard]
 ```
 
-**The gate is the part worth reading.** The funnel is computed twice: once by comparing
-timestamps, once by a regex over each shopper's event sequence. On the first real export
-they disagreed by 17%, and neither query had a bug. GA4 users repeat steps constantly, and
-GA4 stamps every event in one request with the same microsecond. Both are now handled, the
-methods agree exactly, and any future drift above 0.5% stops the pipeline.
-Full story in [methodology.md](docs/methodology.md).
+1. **Extract** — parameterised BigQuery SQL against GA4's nested event schema. A full refresh
+   scans 2.7 GB, well inside the free tier.
+2. **Validate** — the funnel is computed twice, by two unrelated methods. If they disagree by
+   more than 0.5%, the pipeline stops. On the first real export they disagreed by 17%: GA4
+   users repeat steps, and GA4 stamps events sent together with the same microsecond. Both are
+   now handled and the methods agree exactly.
+3. **Analyse** — significance tests, retention with censoring, opportunity sizing with
+   confidence intervals, RICE, and A/B test design.
+4. **Publish** — one `metrics.json` feeds the memo, the website and the dashboard, so they can
+   never disagree.
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/segments.png" alt="Forest plot: device gap crosses zero, new vs returning does not"></td>
-    <td width="50%"><img src="docs/screenshots/retention.png" alt="Cohort retention heatmap with right-censored cells hatched"></td>
-  </tr>
-  <tr>
-    <td><sub>Segment gaps with 95% intervals. Device crosses zero, so it is not written up as a finding.</sub></td>
-    <td><sub>Cohort retention. Hatched cells are not yet observable, not zero, and are excluded from every average.</sub></td>
-  </tr>
-</table>
+---
 
 ## Repository layout
 
 | Folder | What it holds |
 |---|---|
-| [`sql/`](sql/) | 11 parameterised BigQuery queries: funnel, validation, segments, cohorts, revenue |
-| [`funnelscope/`](funnelscope/) | The only place maths happens: gates, z-tests, Holm, sizing, censoring, RICE, test design |
+| [`sql/`](sql/) | 11 BigQuery queries: funnel, validation, segments, cohorts, revenue |
+| [`funnelscope/`](funnelscope/) | All the maths: funnel gates, statistics, sizing, retention, RICE, test design |
 | [`scripts/`](scripts/) | The pipeline: export → analyse → render memo → build site |
-| [`docs/`](docs/) | **[MEMO.md](docs/MEMO.md)** (the deliverable), methodology, interview defence, query costs |
-| [`web/`](web/) | The report site: plain HTML/CSS/JS, opens from `file://`, deploys to GitHub Pages |
-| [`app/`](app/) | Streamlit dashboard for interactive filtering |
-| [`tests/`](tests/) | 175 tests: SQL checks, funnel invariants, statistics vs SciPy and statsmodels |
+| [`docs/`](docs/) | [Decision memo](docs/MEMO.md), [methodology](docs/methodology.md), [interview defence](docs/INTERVIEW.md), query costs |
+| [`web/`](web/) | The report website — plain HTML/CSS/JS, no build step |
+| [`app/`](app/) | Streamlit dashboard |
+| [`tests/`](tests/) | 175 tests, including statistics checked against SciPy and statsmodels |
 
 ## Run it
 
 ```bash
-git clone https://github.com/Ishaana0112/FunnelScope.git && cd FunnelScope
-bash setup.sh                      # Windows: .\setup.ps1
-open web/index.html                # the report, no server needed
+git clone https://github.com/IshaanS0112/FunnelScope.git && cd FunnelScope
+bash setup.sh                       # Windows: .\setup.ps1
+open web/index.html                 # the report — no server needed
 ```
 
-`streamlit run app/streamlit_app.py` for the dashboard · `pytest` for the tests · `make all`
-to rebuild everything. Re-exporting from BigQuery needs a free Sandbox project; see
+`streamlit run app/streamlit_app.py` opens the dashboard · `pytest` runs the tests ·
+`make all` rebuilds everything. Re-exporting from BigQuery needs a free Sandbox project — see
 [sql/README.md](sql/README.md).
 
-## Tags
+## Built with
 
-Business intelligence · data analysis · product analytics · ecommerce analytics · funnel
-and cohort analysis · A/B test design · statistics · KPI reporting · dashboards · BigQuery ·
-SQL · Google Analytics 4 · Python · pandas · Streamlit
+BigQuery SQL · Python 3.12 · pandas · NumPy · Streamlit · Altair · pytest · GitHub Actions ·
+GitHub Pages · plain HTML/CSS/JavaScript
 
-## Scope, honestly
+## Scope
 
-This is Google's public obfuscated GA4 sample, not a business problem I found. Channel and
-product names are redacted at source. What is real is the analysis: SQL against GA4's nested
-schema, a funnel that survives two independent implementations, statistics corrected for
-multiple comparisons, and recommendations that state their assumptions. Every revenue figure
-is an upper bound, and nothing has been A/B tested yet; the test plan says how it would be.
+This is Google's public, obfuscated GA4 sample — channel and product names are redacted at
+source. The business is Google's; the analysis is mine. Every revenue figure is an upper
+bound, and the recommendations are hypotheses until the test plan is run.
 
 ---
 
-<sub>MIT licence · Built by Ishaan Singh</sub>
+<sub>MIT licence · Ishaan Singh</sub>
