@@ -29,6 +29,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
 
 from funnelscope import io as fio  # noqa: E402
 
@@ -113,7 +115,7 @@ def main() -> int:
 
     total_bytes = 0
     for path in files:
-        sql_text = path.read_text()
+        sql_text = path.read_text(encoding="utf-8")
         params = build_params(bigquery, sql_text)
 
         estimate = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False,

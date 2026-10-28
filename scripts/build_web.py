@@ -21,6 +21,8 @@ import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
 
 from funnelscope import FUNNEL_STAGES, STAGE_LABELS, io as fio, retention  # noqa: E402
 
@@ -117,7 +119,7 @@ def main() -> int:
     if not metrics_path.exists():
         print("No metrics.json. Run `python scripts/analyze.py` first.", file=sys.stderr)
         return 1
-    m = json.loads(metrics_path.read_text())
+    m = json.loads(metrics_path.read_text(encoding="utf-8"))
 
     overall = fio.load("02_funnel_overall")
     by_device = fio.load("03_funnel_by_device")
@@ -171,7 +173,7 @@ def main() -> int:
         "// Every number here comes from data/processed/metrics.json, which is itself\n"
         "// produced only after the funnel correctness gates have passed.\n"
         f"window.FUNNELSCOPE_DATA = {payload};\n"
-    )
+    , encoding="utf-8")
 
     size_kb = DATA_JS.stat().st_size / 1024
     print(f"Wrote {DATA_JS.relative_to(REPO_ROOT)}  ({size_kb:,.0f} KB)")

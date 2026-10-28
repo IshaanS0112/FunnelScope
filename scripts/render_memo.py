@@ -18,6 +18,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
 
 from funnelscope import STAGE_LABELS, io as fio  # noqa: E402
 
@@ -309,9 +311,9 @@ def main() -> int:
     if not metrics_path.exists():
         print("No metrics.json. Run `python scripts/analyze.py` first.", file=sys.stderr)
         return 1
-    m = json.loads(metrics_path.read_text())
+    m = json.loads(metrics_path.read_text(encoding="utf-8"))
 
-    text = TEMPLATE.read_text()
+    text = TEMPLATE.read_text(encoding="utf-8")
     tokens = build_tokens(m, args.author)
     for key, value in tokens.items():
         text = text.replace("{{" + key + "}}", str(value))
@@ -324,7 +326,7 @@ def main() -> int:
     if not m["provenance"]["is_real"]:
         text = FIXTURE_BANNER + text
 
-    OUTPUT.write_text(text)
+    OUTPUT.write_text(text, encoding="utf-8")
 
     # The 800-word budget is on the ARGUMENT. Tables are reference material a reader
     # scans; prose is what they have to read.

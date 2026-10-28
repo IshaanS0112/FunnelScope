@@ -81,7 +81,7 @@ def read_manifest() -> Manifest:
             f"No manifest at {MANIFEST_PATH}. Run `python scripts/run_queries.py` "
             f"(real data) or `python scripts/make_fixture.py` (pipeline test) first."
         )
-    return Manifest(**json.loads(MANIFEST_PATH.read_text()))
+    return Manifest(**json.loads(MANIFEST_PATH.read_text(encoding="utf-8")))
 
 
 def load(name: str) -> pd.DataFrame:

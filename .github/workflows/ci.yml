@@ -38,9 +38,9 @@ jobs:
           grep -q 'FUNNELSCOPE_DATA' web/data.js
           python - <<'PY'
           import json, pathlib, re, sys
-          text = pathlib.Path("web/data.js").read_text()
+          text = pathlib.Path("web/data.js").read_text(encoding="utf-8")
           data = json.loads(text[text.index("{"):text.rindex(";")])
-          manifest = json.loads(pathlib.Path("data/processed/_manifest.json").read_text())
+          manifest = json.loads(pathlib.Path("data/processed/_manifest.json").read_text(encoding="utf-8"))
           assert data["provenance"]["source"] == manifest["source"], (
               "web/data.js provenance disagrees with the manifest")
           print("provenance consistent:", manifest["source"])

@@ -22,20 +22,20 @@ FUNNEL_QUERIES = [p for p in SQL_FILES if "funnel" in p.name]
 def test_every_query_filters_the_wildcard_table(path):
     """The one mistake that burns the free tier: an unfiltered wildcard scans the
     entire dataset."""
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     assert "_TABLE_SUFFIX BETWEEN" in text, f"{path.name} has no _TABLE_SUFFIX filter"
 
 
 @pytest.mark.parametrize("path", SQL_FILES, ids=lambda p: p.name)
 def test_no_select_star(path):
     """BigQuery bills per column scanned; SELECT * bills for all of them."""
-    text = re.sub(r"--.*", "", path.read_text())
+    text = re.sub(r"--.*", "", path.read_text(encoding="utf-8"))
     assert not re.search(r"SELECT\s+\*", text, re.IGNORECASE), f"{path.name} uses SELECT *"
 
 
 @pytest.mark.parametrize("path", SQL_FILES, ids=lambda p: p.name)
 def test_query_documents_itself(path):
-    head = path.read_text()[:900]
+    head = path.read_text(encoding="utf-8")[:900]
     for marker in ("Question:", "Output:", "Est. scan:"):
         assert marker in head, f"{path.name} header is missing '{marker}'"
 
@@ -44,7 +44,7 @@ def test_query_documents_itself(path):
 def test_no_ddl_or_dml(path):
     """BigQuery Sandbox blocks DML and expires tables after 60 days, so the pipeline
     must never depend on writing anything server-side."""
-    text = re.sub(r"--.*", "", path.read_text()).upper()
+    text = re.sub(r"--.*", "", path.read_text(encoding="utf-8")).upper()
     for stmt in ("INSERT ", "UPDATE ", "DELETE ", "CREATE TABLE", "CREATE OR REPLACE"):
         assert stmt not in text, f"{path.name} contains {stmt.strip()}"
 
@@ -53,7 +53,7 @@ def test_no_ddl_or_dml(path):
 def test_funnel_stage_predicates_are_cumulative(path):
     """Guards the exact bug documented in 02_funnel_ordered.sql: a `purchased` stage
     that does not re-assert the earlier ordering conditions is not a funnel."""
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     if "purchase_ts > checkout_ts" not in text:
         pytest.skip("not a timestamp-ordering funnel query")
     match = re.search(
@@ -68,7 +68,7 @@ def test_funnel_stage_predicates_are_cumulative(path):
 def test_sql_parses_as_bigquery():
     sqlglot = pytest.importorskip("sqlglot")
     for path in SQL_FILES:
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         # sqlglot has no notion of @named query parameters; substitute literals.
         text = re.sub(r"@\w+", "'X'", text)
         sqlglot.parse_one(text, dialect="bigquery")
@@ -119,11 +119,11 @@ def test_pipeline_runs_end_to_end():
     for script in ("make_fixture.py", "analyze.py", "render_memo.py", "build_web.py"):
         result = subprocess.run(
             [sys.executable, str(REPO_ROOT / "scripts" / script)],
-            capture_output=True, text=True, cwd=REPO_ROOT)
+            capture_output=True, text=True, encoding="utf-8", cwd=REPO_ROOT)
         assert result.returncode == 0, f"{script} failed:\n{result.stderr}"
-    memo = (REPO_ROOT / "docs" / "MEMO.md").read_text()
+    memo = (REPO_ROOT / "docs" / "MEMO.md").read_text(encoding="utf-8")
     assert "{{" not in memo, "memo has unfilled template tokens"
-    assert "window.FUNNELSCOPE_DATA" in (REPO_ROOT / "web" / "data.js").read_text()
+    assert "window.FUNNELSCOPE_DATA" in (REPO_ROOT / "web" / "data.js").read_text(encoding="utf-8")
 
 
 def test_fixture_output_is_labelled_as_fixture():
@@ -136,11 +136,11 @@ def test_fixture_output_is_labelled_as_fixture():
     from funnelscope import io as fio
     manifest = fio.read_manifest()
     if manifest.is_real:
-        assert "SYNTHETIC FIXTURE" not in memo.read_text()
-        assert "NOT AN ANALYSIS" not in memo.read_text()
+        assert "SYNTHETIC FIXTURE" not in memo.read_text(encoding="utf-8")
+        assert "NOT AN ANALYSIS" not in memo.read_text(encoding="utf-8")
     else:
-        assert "NOT AN ANALYSIS" in memo.read_text()
-        assert memo.read_text().lstrip().startswith(">"), (
+        assert "NOT AN ANALYSIS" in memo.read_text(encoding="utf-8")
+        assert memo.read_text(encoding="utf-8").lstrip().startswith(">"), (
             "the banner must be the first thing in the file, not buried in it")
 
 

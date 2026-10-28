@@ -34,7 +34,7 @@ ACCENT, _, FAINT = PALETTE
 def load_all():
     manifest = fio.read_manifest()
     metrics_path = fio.PROCESSED_DIR / "metrics.json"
-    metrics = json.loads(metrics_path.read_text()) if metrics_path.exists() else None
+    metrics = json.loads(metrics_path.read_text(encoding="utf-8")) if metrics_path.exists() else None
     data = {name: fio.load(name) for name in (
         "01_event_overview", "02_funnel_overall", "03_funnel_by_device",
         "04_funnel_by_source", "05_funnel_by_visitor_type",

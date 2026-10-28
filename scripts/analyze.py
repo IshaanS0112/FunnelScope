@@ -28,6 +28,8 @@ import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
 
 from funnelscope import FUNNEL_STAGES, STAGE_LABELS, experiment, funnel, io as fio, retention, rice, sizing  # noqa: E402
 
@@ -123,7 +125,7 @@ def main() -> int:
     print(manifest.banner())
     print()
 
-    previous_metrics = (json.loads(METRICS_PATH.read_text())
+    previous_metrics = (json.loads(METRICS_PATH.read_text(encoding="utf-8"))
                         if METRICS_PATH.exists() else None)
 
     overall = fio.load("02_funnel_overall")
@@ -463,7 +465,7 @@ def main() -> int:
         print("  A re-export that moves a number you did not expect to move is a broken "
               "query until proven otherwise.")
 
-    METRICS_PATH.write_text(json.dumps(metrics, indent=2, default=str) + "\n")
+    METRICS_PATH.write_text(json.dumps(metrics, indent=2, default=str) + "\n", encoding="utf-8")
     print(f"\nWrote {METRICS_PATH.relative_to(REPO_ROOT)}")
     print("Next: python scripts/render_memo.py")
     return 0
